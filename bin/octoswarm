@@ -1,0 +1,164 @@
+#!/bin/bash
+
+assert_required_params(){
+  local machine_id="$1"
+
+  if [ -n "$machine_id"  ]; then
+    return 0
+  fi
+
+  usage
+
+  if [ -z "$machine_id" ]; then
+    echo "machine_id is missing"
+  fi
+
+  exit 1
+}
+
+script_directory(){
+  local source="${BASH_SOURCE[0]}"
+  local dir=""
+
+  while [ -h "$source" ]; do # resolve $source until the file is no longer a symlink
+    dir="$( cd -P "$( dirname "$source" )" && pwd )"
+    source="$(readlink "$source")"
+    [[ $source != /* ]] && source="$dir/$source" # if $source was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+  done
+
+  dir="$( cd -P "$( dirname "$source" )" && pwd )"
+
+  echo "$dir"
+}
+
+setup_session() {
+  local session="$1"
+  local machine_id="$2"
+  eval $(docker-machine env --shell=bash "$machine_id")
+  tmux set-environment -t $session DOCKER_CERT_PATH $DOCKER_CERT_PATH
+  tmux set-environment -t $session DOCKER_TLS_VERIFY $DOCKER_TLS_VERIFY
+  tmux set-environment -t $session DOCKER_HOST $DOCKER_HOST
+  tmux set-environment -t $session DOCKER_MACHINE_NAME $DOCKER_MACHINE_NAME
+  eval $(docker-machine env --unset)
+}
+
+select_tab() {
+  local session="$1"
+  local tab="$2"
+  tmux select-window -t "${session}:${tab}"
+}
+
+setup_tab_zero() {
+  local session="$1"
+  tmux send-keys -t "${session}:0.0" C-m || return 1
+  tmux send-keys -t "${session}:0.0" "tmux kill-session -t ${session}" || return 1
+}
+
+setup_tab_shell() {
+  local session="$1"
+  tmux new-window -t "${session}:1" -n "shell" || return 1
+}
+
+start_server() {
+  tmux start-server
+}
+
+attach_session() {
+  local session="$1"
+  tmux attach-session -t "$session"
+}
+
+create_session() {
+  local session="$1"
+  tmux new-session -s "$session" -n √ø -d
+}
+
+has_session() {
+  local session="$1"
+  tmux has-session -t "$session"
+}
+
+fatal() {
+  local message="$1"
+  echo "Error: $message"
+  exit 1
+}
+
+script_directory(){
+  local source="${BASH_SOURCE[0]}"
+  local dir=""
+
+  while [ -h "$source" ]; do # resolve $source until the file is no longer a symlink
+    dir="$( cd -P "$( dirname "$source" )" && pwd )"
+    source="$(readlink "$source")"
+    [[ $source != /* ]] && source="$dir/$source" # if $source was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+  done
+
+  dir="$( cd -P "$( dirname "$source" )" && pwd )"
+
+  echo "$dir"
+}
+
+usage(){
+  echo 'USAGE: octomux <machine_id>'
+  echo ''
+  echo 'Arguments:'
+  echo '  -h, --help         print this help text'
+  echo '  -v, --version      print the version'
+  echo ''
+}
+
+version(){
+  local directory="$(script_directory)"
+
+  if [ -f "$directory/VERSION" ]; then
+    cat "$directory/VERSION"
+  else
+    echo "unknown"
+  fi
+}
+
+main() {
+  local machine_id="$1";
+  while [ "$1" != "" ]; do
+    local param="$1"
+    local value="$2"
+    case "$param" in
+      -h | --help)
+        usage
+        exit 0
+        ;;
+      -v | --version)
+        version
+        exit 0
+        ;;
+      *)
+        if [ "${param::1}" == '-' ]; then
+          echo "ERROR: unknown parameter \"$param\""
+          usage
+          exit 1
+        fi
+        if [ ! -z "$param" ]; then
+          machine_id="$param"
+        fi
+        ;;
+    esac
+    shift
+  done
+
+  assert_required_params "$machine_id"
+
+  local session="octomux-$machine_id"
+  start_server
+  has_session "$session"
+  if [ "$?" != "0" ]; then
+    create_session "$session"
+    setup_session "$session" "$machine_id"
+    setup_tab_zero "$session"
+    setup_tab_shell "$session"
+    select_tab "$session" "1" 2> /dev/null
+  fi
+  attach_session "$session"
+}
+
+main "$@"
