@@ -41,7 +41,7 @@ version(){
 
 stop_service() {
   local service_name="$1"
-  local directory="$(script_directory)"
+  local directory="$2"
   pushd "$directory/services/$service_name"
   ./stop
   popd
@@ -75,7 +75,7 @@ main() {
     shift
   done
 
-  stop_service "$service_name"
+  stop_service "$service_name" "$PWD"
 }
 
 main "$@"
