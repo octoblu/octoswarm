@@ -75,15 +75,8 @@ version(){
 
 create_machine() {
   local machine_id="$1"
-  docker-machine create \
-    --driver amazonec2 \
-    --amazonec2-access-key "$AWS_ACCESS_KEY_ID" \
-    --amazonec2-secret-key "$AWS_SECRET_ACCESS_KEY" \
-    --amazonec2-region "us-west-2" \
-    --amazonec2-instance-type "m4.xlarge" \
-    --amazonec2-security-group "swarm-prod" \
-    --amazonec2-security-group "swarm-prod-ssh" \
-    "$machine_id"
+  local options="$2"
+  echo "$(docker-machine create $options "$machine_id")"
 }
 
 main() {
@@ -100,6 +93,10 @@ main() {
         version
         exit 0
         ;;
+      --)
+        shift
+        break
+        ;;
       *)
         if [ "${param::1}" == '-' ]; then
           echo "ERROR: unknown parameter \"$param\""
@@ -115,7 +112,7 @@ main() {
   done
 
   assert_required_params "$machine_id"
-  create_machine "$machine_id"
+  create_machine "$machine_id" "$*"
 }
 
 main "$@"
