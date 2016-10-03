@@ -39,22 +39,6 @@ version(){
   fi
 }
 
-start_service() {
-  local service_name="$1"
-  local directory="$2"
-  pushd "$directory/services/$service_name"
-  ./start
-  popd
-}
-
-stop_service() {
-  local service_name="$1"
-  local directory="$2"
-  pushd "$directory/services/$service_name"
-  ./stop
-  popd
-}
-
 main() {
   local service_name="$1";
   while [ "$1" != "" ]; do
@@ -83,9 +67,9 @@ main() {
     shift
   done
 
-  stop_service "$service_name" "$PWD"
+  swarm-stop-service "$service_name"
   sleep 3
-  start_service "$service_name" "$PWD"
+  swarm-start-service "$service_name" 
 }
 
 main "$@"

@@ -42,9 +42,9 @@ version(){
 start_service() {
   local service_name="$1"
   local directory="$2"
-  pushd "$directory/services/$service_name"
+  pushd "$directory/services/$service_name" > /dev/null
   ./start
-  popd
+  popd > /dev/null
 }
 
 main() {
