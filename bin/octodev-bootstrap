@@ -4,7 +4,7 @@ assert_required_params(){
   local stack_env_dir="$1"
   local mongo_uri="$2"
 
-  if [ -n "$mongo_uri" -a "$stack_env_dir" -a -d "$stack_env_dir" ]; then
+  if [ -n "$mongo_uri" -a -n "$stack_env_dir" -a -d "$stack_env_dir" ]; then
     return 0
   fi
 
@@ -71,7 +71,7 @@ usage(){
   echo 'Environment:'
   echo '  DEBUG              print debug output'
   echo '  STACK_ENV_DIR      path to stack env directory.'
-  echo '                       - Defaults: $HOME/Projects/Octoblu/the-stack-env-development'
+  echo '                       Default: $HOME/Projects/Octoblu/the-stack-env-development'
 }
 
 version(){
