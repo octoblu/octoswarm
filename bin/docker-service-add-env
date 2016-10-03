@@ -19,7 +19,7 @@ assert_required_params(){
   fi
 
   if [ ! -d "$stack_env_dir/env.d/$service_name" ]; then
-    echo 'The project env is not a directory'
+    echo "The project env is not a directory. $stack_env_dir/env.d/$service_name"
   fi
 
   exit 1
@@ -87,7 +87,8 @@ version(){
 env_add() {
   local stack_env_dir="$1"
   local service_name="$2" 
-  pushd "$stack_env_dir/env.d/$project_name" > /dev/null
+  local folder_name="$3" 
+  pushd "$stack_env_dir/env.d/$folder_name" > /dev/null
   for file in $(ls); do
     value="$(cat $file)"
     docker service update --env-add "$file=$value" "$service_name" > /dev/null
@@ -136,8 +137,8 @@ main() {
   debug "stack_env_dir: $stack_env_dir"
   debug "service_name: $service_name"
 
-  env_add "$stack_env_dir" "_defaults"
-  env_add "$stack_env_dir" "$service_name"
+  env_add "$stack_env_dir" "$service_name" "_defaults"
+  env_add "$stack_env_dir" "$service_name" "$service_name"
 }
 
 main "$@"

@@ -83,7 +83,7 @@ version(){
 build_project() {
   local projects_dir="$1"
   local project_name="$2"
-  pushd "$project_dir/$project_name" > /dev/null
+  pushd "$projects_dir/$project_name" > /dev/null
     docker build -t "$project_name:dev" . || exit 1
   popd > /dev/null
 }
