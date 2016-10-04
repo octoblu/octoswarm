@@ -77,7 +77,7 @@ get_service_line(){
   local service_name="$1"
   local instance_name="$2"
 
-  docker service ps slurry-exchange \
+  docker service ps "$service_name" \
   | grep Running \
   | grep "${service_name}.${instance_name}"
 }
@@ -125,6 +125,7 @@ follow_instance() {
   local docker_instance_name="$(get_docker_instance_name $service_name $instance_name)"
   local docker_config="$(docker-machine config $machine_name)"
 
+  echo "Following $docker_instance_name..."
   docker $docker_config logs -f "$docker_instance_name"
 
   echo "following: $service_name.$instance_name"

@@ -132,7 +132,7 @@ env_add() {
 get_docker_version() {
   local service_name="$1"
 
-  git ls-remote --tags "git@github.com:octoblu/$service_name.git" | tail -1 | awk '{ print $2 }' | cut -d/ -f3
+  git ls-remote --tags "git@github.com:octoblu/$service_name.git" | awk '{ print $2 }' | cut -d/ -f3 | gsort --version-sort | tail -1
 }
 
 main() {
