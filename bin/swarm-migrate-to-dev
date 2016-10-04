@@ -27,7 +27,7 @@ assert_required_params(){
 }
 
 debug() {
-  local debug_key='swarm-migrate-to-prod'
+  local debug_key='swarm-migrate-to-dev'
   local cyan='\033[0;36m'
   local no_color='\033[0;0m'
   if [ -z "$DEBUG" ]; then
@@ -55,7 +55,7 @@ copy_env(){
 
   local dest_dir="$stack_env_dir/env.d/$service_name"
   if [ ! -d "$dest_dir" ]; then
-    cp -rfp "$HOME/Projects/Octoblu/the-stack-env-production/major/etcd/octoblu/$service_name/env" "$dest_dir"
+    echo "WARNING! you'll need to manually copy over the environment"
   fi
 }
 
@@ -63,10 +63,9 @@ generate_service(){
   local stack_env_dir="$1"
   local service_name="$2"
   local subdomain="$3"
-  local docker_version="$4"
 
   mkdir -p "$stack_env_dir/services/$service_name"
-  export SERVICE_NAME="$service_name" SUBDOMAIN="$subdomain" DOCKER_VERSION="$docker_version"
+  export SERVICE_NAME="$service_name" SUBDOMAIN="$subdomain"
   local start_script="$stack_env_dir/services/$service_name/start"
   local stop_script="$stack_env_dir/services/$service_name/stop"
   cat "$stack_env_dir/services/_template/start" | envsubst > "$start_script" && chmod +x "$start_script"
@@ -90,14 +89,13 @@ script_directory(){
 }
 
 usage(){
-  echo 'USAGE: swarm-migrate-to-prod'
+  echo 'USAGE: swarm-migrate-to-dev'
   echo ''
   echo 'Arguments:'
   echo '  -h, --help         print this help text'
   echo '  -v, --version      print the version'
   echo '  -s, --service-name the name of the service'
   echo '  -d, --subdomain    subdomain to use'
-  echo '  --docker-version   the docker version'
   echo 'Environment:'
   echo '  DEBUG              print debug output'
   echo '  STACK_ENV_DIR      path to stack env directory.'
@@ -129,16 +127,9 @@ env_add() {
   fi
 }
 
-get_docker_version() {
-  local service_name="$1"
-
-  git ls-remote --tags "git@github.com:octoblu/$service_name.git" | tail -1 | awk '{ print $2 }' | cut -d/ -f3
-}
-
 main() {
   local service_name
   local subdomain
-  local docker_version
 
   while [ "$1" != "" ]; do
     local param="$1"
@@ -158,9 +149,6 @@ main() {
       -d | --subdomain)
         subdomain="$value"
         ;;
-      --docker-version)
-        docker_version="$value"
-        ;;
       *)
         if [ "${param::1}" == '-' ]; then
           echo "ERROR: unknown parameter \"$param\""
@@ -179,12 +167,8 @@ main() {
   debug "stack_env_dir: $stack_env_dir"
   debug "service_name: $service_name"
 
-  if [ -z "$docker_version" ]; then
-    docker_version="$(get_docker_version $service_name)"
-  fi
-
   copy_env "$stack_env_dir" "$service_name"
-  generate_service "$stack_env_dir" "$service_name" "$subdomain" "$docker_version"
+  generate_service "$stack_env_dir" "$service_name" "$subdomain"
 }
 
 main "$@"
