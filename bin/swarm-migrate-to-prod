@@ -1,0 +1,189 @@
+#!/bin/bash
+
+assert_required_params(){
+  local stack_env_dir="$1"
+  local service_name="$2"
+  local subdomain="$3"
+
+  if [ -n "$stack_env_dir" -a -n "$service_name" -a -n "$subdomain" ]; then
+    return 0
+  fi
+
+  usage
+
+  if [ -z "$service_name" ]; then
+    echo "service_name is required"
+  fi
+
+  if [ -z "$stack_env_dir" ]; then
+    echo "STACK_ENV_DIR is empty"
+  fi
+
+  if [ -z "$subdomain" ]; then
+    echo "subdomain is required"
+  fi
+
+  exit 1
+}
+
+debug() {
+  local debug_key='docker-service-add-env'
+  local cyan='\033[0;36m'
+  local no_color='\033[0;0m'
+  if [ -z "$DEBUG" ]; then
+    return 0
+  fi
+  echo "$debug_key" | grep "$DEBUG"
+  local is_valid_debug="$?"
+  if [ "$debug_key" == '*' -a "$is_valid_debug" != "0" ]; then
+    return 0
+  fi
+  local message="$@"
+  (>&2 echo -e "[${cyan}${debug_key}${no_color}]: $message")
+}
+
+fatal() {
+  local message="$1"
+  (>&2 echo "Error: $message")
+  exit 1
+}
+
+copy_env(){
+  local stack_env_dir="$1"
+  local service_name="$2"
+  local subdomain="$3"
+
+  local dest_dir="$stack_env_dir/env.d/$service_name"
+  if [ ! -d "$dest_dir" ]; then
+    cp -rfp "$HOME/Projects/Octoblu/the-stack-env-production/major/etcd/octoblu/$service_name/env" "$dest_dir"
+  fi
+}
+
+generate_service(){
+  local stack_env_dir="$1"
+  local service_name="$2"
+  local subdomain="$3"
+  local docker_version="$4"
+
+  mkdir -p "$stack_env_dir/services/$service_name"
+  export SERVICE_NAME="$service_name" SUBDOMAIN="$subdomain" DOCKER_VERSION="$docker_version"
+  local start_script="$stack_env_dir/services/$service_name/start"
+  local stop_script="$stack_env_dir/services/$service_name/stop"
+  cat "$stack_env_dir/services/_template/start" | envsubst > "$start_script" && chmod +x "$start_script"
+  cat "$stack_env_dir/services/_template/stop" | envsubst > "$stop_script" && chmod +x "$stop_script"
+  unset SERVICE_NAME
+}
+
+script_directory(){
+  local source="${BASH_SOURCE[0]}"
+  local dir=""
+
+  while [ -h "$source" ]; do # resolve $source until the file is no longer a symlink
+    dir="$( cd -P "$( dirname "$source" )" && pwd )"
+    source="$(readlink "$source")"
+    [[ $source != /* ]] && source="$dir/$source" # if $source was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+  done
+
+  dir="$( cd -P "$( dirname "$source" )" && pwd )"
+
+  echo "$dir"
+}
+
+usage(){
+  echo 'USAGE: docker-service-add-env'
+  echo ''
+  echo 'Arguments:'
+  echo '  -h, --help         print this help text'
+  echo '  -v, --version      print the version'
+  echo '  -s, --service-name the name of the service'
+  echo '  -d, --subdomain    subdomain to use'
+  echo 'Environment:'
+  echo '  DEBUG              print debug output'
+  echo '  STACK_ENV_DIR      path to stack env directory.'
+}
+
+version(){
+  local directory="$(script_directory)"
+
+  if [ -f "$directory/VERSION" ]; then
+    cat "$directory/VERSION"
+  else
+    echo "unknown"
+  fi
+}
+
+env_add() {
+  local stack_env_dir="$1"
+  local service_name="$2"
+  local folder_name="$3"
+
+  local env_folder="$stack_env_dir/env.d/$folder_name"
+  if [ -d "$env_folder" ]; then
+    pushd "$env_folder" > /dev/null
+    for file in $(ls); do
+      value="$(cat $file)"
+      docker service update --env-add "$file=$value" "$service_name" > /dev/null
+    done
+    popd > /dev/null
+  fi
+}
+
+get_docker_version() {
+  local service_name="$1"
+
+  git ls-remote --tags "https://github.com/octoblu/$service_name.git" | tail -1 | awk '{ print $2 }' | cut -d/ -f3
+}
+
+main() {
+  local service_name
+  local subdomain
+  local docker_version
+
+  while [ "$1" != "" ]; do
+    local param="$1"
+    local value="$2"
+    case "$param" in
+      -h | --help)
+        usage
+        exit 0
+        ;;
+      -v | --version)
+        version
+        exit 0
+        ;;
+      -s | --service-name)
+        service_name="$value"
+        ;;
+      -d | --subdomain)
+        subdomain="$value"
+        ;;
+      --docker-version)
+        docker_version="$value"
+        ;;
+      *)
+        if [ "${param::1}" == '-' ]; then
+          echo "ERROR: unknown parameter \"$param\""
+          usage
+          exit 1
+        fi
+        ;;
+    esac
+    shift
+  done
+
+  local stack_env_dir="$STACK_ENV_DIR"
+
+  assert_required_params "$stack_env_dir" "$service_name" "$subdomain"
+
+  debug "stack_env_dir: $stack_env_dir"
+  debug "service_name: $service_name"
+
+  if [ -z "$docker_version" ]; then
+    docker_version="$(get_docker_version $service_name)"
+  fi
+
+  copy_env "$stack_env_dir" "$service_name"
+  generate_service "$stack_env_dir" "$service_name" "$subdomain" "$docker_version"
+}
+
+main "$@"

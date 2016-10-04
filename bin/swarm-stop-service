@@ -76,7 +76,7 @@ main() {
     shift
   done
 
-  stop_service "$service_name" "$PWD"
+  stop_service "$service_name" "$STACK_ENV_DIR"
 }
 
 main "$@"
