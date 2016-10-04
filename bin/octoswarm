@@ -46,6 +46,7 @@ setup_session() {
   tmux set-environment -t $session DOCKER_TLS_VERIFY $DOCKER_TLS_VERIFY
   tmux set-environment -t $session DOCKER_HOST $DOCKER_HOST
   tmux set-environment -t $session DOCKER_MACHINE_NAME $DOCKER_MACHINE_NAME
+
   eval $(docker-machine env --unset)
 }
 
@@ -97,7 +98,11 @@ attach_session() {
 
 create_session() {
   local session="$1"
-  tmux new-session -s "$session" -n √ø -d
+  local docker_machine_env="$2"
+  export STACK_ENV_DIR="$HOME/Projects/Octoblu/swarm-$docker_machine_env"
+  cd "$STACK_ENV_DIR"
+  tmux new-session -s "$session" -c "$STACK_ENV_DIR" -n √ø -d
+  tmux set-environment -t $session STACK_ENV_DIR $STACK_ENV_DIR
 }
 
 has_session() {
@@ -182,7 +187,7 @@ main() {
   start_server
   has_session "$session"
   if [ "$?" != "0" ]; then
-    create_session "$session"
+    create_session "$session" "$docker_machine_env"
     setup_docker_machine "$session" "$docker_machine_env"
     setup_session "$session" "$machine_id"
     setup_tab_zero "$session"

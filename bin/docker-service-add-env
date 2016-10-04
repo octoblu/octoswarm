@@ -4,7 +4,7 @@ assert_required_params(){
   local stack_env_dir="$1"
   local service_name="$2"
 
-  if [ -n "$stack_env_dir" -a -d "$stack_env_dir/env.d/$service_name" ]; then
+  if [ -n "$stack_env_dir" -a -n "$service_name" ]; then
     return 0
   fi
 
@@ -16,10 +16,6 @@ assert_required_params(){
 
   if [ -z "$stack_env_dir" ]; then
     echo "STACK_ENV_DIR is empty"
-  fi
-
-  if [ ! -d "$stack_env_dir/env.d/$service_name" ]; then
-    echo "The project env is not a directory. $stack_env_dir/env.d/$service_name"
   fi
 
   exit 1
@@ -71,7 +67,6 @@ usage(){
   echo 'Environment:'
   echo '  DEBUG              print debug output'
   echo '  STACK_ENV_DIR      path to stack env directory.'
-  echo '                       Default: $HOME/Projects/Octoblu/the-stack-env-development'
 }
 
 version(){
@@ -86,14 +81,18 @@ version(){
 
 env_add() {
   local stack_env_dir="$1"
-  local service_name="$2" 
-  local folder_name="$3" 
-  pushd "$stack_env_dir/env.d/$folder_name" > /dev/null
-  for file in $(ls); do
-    value="$(cat $file)"
-    docker service update --env-add "$file=$value" "$service_name" > /dev/null
-  done
-  popd > /dev/null
+  local service_name="$2"
+  local folder_name="$3"
+
+  local env_folder="$stack_env_dir/env.d/$folder_name"
+  if [ -d "$env_folder" ]; then
+    pushd "$env_folder" > /dev/null
+    for file in $(ls); do
+      value="$(cat $file)"
+      docker service update --env-add "$file=$value" "$service_name" > /dev/null
+    done
+    popd > /dev/null
+  fi
 }
 
 main() {
@@ -125,12 +124,7 @@ main() {
     shift
   done
 
-
   local stack_env_dir="$STACK_ENV_DIR"
-
-  if [ -z "$stack_env_dir" ]; then
-    stack_env_dir="$HOME/Projects/Octoblu/the-stack-env-development"
-  fi
 
   assert_required_params "$stack_env_dir" "$service_name"
 
