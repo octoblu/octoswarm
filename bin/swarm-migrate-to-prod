@@ -54,8 +54,11 @@ copy_env(){
   local subdomain="$3"
 
   local dest_dir="$stack_env_dir/env.d/$service_name"
-  if [ ! -d "$dest_dir" ]; then
-    cp -rfp "$HOME/Projects/Octoblu/the-stack-env-production/major/etcd/octoblu/$service_name/env" "$dest_dir"
+  local src_dir="$HOME/Projects/Octoblu/the-stack-env-production/major/etcd/octoblu/$service_name/env"
+  if [ -d "$src_dir" ]; then
+    if [ ! -d "$dest_dir" ]; then
+      cp -rfp "$src_dir" "$dest_dir"
+    fi
   fi
 }
 
