@@ -22,7 +22,7 @@ script_directory(){
 }
 
 usage(){
-  echo 'USAGE: swarm-start-service <service-name>'
+  echo 'USAGE: swarm-stop-service <service-name>'
   echo ''
   echo 'Arguments:'
   echo '  -h, --help         print this help text'
@@ -39,16 +39,8 @@ version(){
   fi
 }
 
-start_service() {
-  local service_name="$1"
-  local directory="$2"
-  pushd "$directory/services/$service_name" > /dev/null
-  ./start
-  popd > /dev/null
-}
-
 main() {
-  local service_name="$1";
+  local machine_id="$1";
   while [ "$1" != "" ]; do
     local param="$1"
     local value="$2"
@@ -67,15 +59,15 @@ main() {
           usage
           exit 1
         fi
-        if [ -n "$param" ]; then
-          service_name="$param"
+        if [ -z "$param" ]; then
+          machine_id="$param"
         fi
         ;;
     esac
     shift
   done
 
-  start_service "$service_name" "$SWARM_ENV_DIR"
+  docker $(docker-machine config "$machine_id") swarm init  --advertise-addr eth0 --listen-addr eth0
 }
 
 main "$@"

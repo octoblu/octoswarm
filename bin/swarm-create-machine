@@ -122,8 +122,12 @@ main() {
     shift
   done
 
+  local template_dir=""
+
   assert_required_params "$machine_id"
+  echo "Creating $machine_id"
   create_machine "$machine_id" "$*" && \
+    mkdir -p "$STACK_ENV_DIR/machine/machines" "$STACK_ENV_DIR/machine-template/machines" && \
     copy_to_template "$machine_id" "$STACK_ENV_DIR/machine/machines" "$STACK_ENV_DIR/machine-template/machines"
 }
 

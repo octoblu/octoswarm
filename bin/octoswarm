@@ -10,7 +10,7 @@ assert_required_tools(){
 assert_required_params(){
   local docker_machine_env="$1"
 
-  if [ -n "$docker_machine_env"  ]; then
+  if [ -n "$docker_machine_env" -a -n "$stack_name"  ]; then
     return 0
   fi
 
@@ -20,7 +20,22 @@ assert_required_params(){
     echo "docker_machine_env is missing"
   fi
 
+  if [ -z "$stack_name" ]; then
+    echo "stack_name is missing"
+  fi
+
   exit 1
+}
+
+get_manager_machine_id(){
+  local docker_machine_env="$1"
+  local stack_name="$2"
+
+  local dir="$HOME/Projects/Octoblu/swarm-$docker_machine_env/stacks/$stack_name/machine/machines"
+
+  mkdir -p "$dir"
+  local random_dir="$(find "$dir" -iname '*manager-*' -maxdepth 1 -mindepth 1 -type d -print0 | gsort --zero-terminated --random-sort | head -1)"
+  echo $(basename "$random_dir")
 }
 
 script_directory(){
@@ -46,7 +61,6 @@ setup_session() {
   tmux set-environment -t $session DOCKER_TLS_VERIFY $DOCKER_TLS_VERIFY
   tmux set-environment -t $session DOCKER_HOST $DOCKER_HOST
   tmux set-environment -t $session DOCKER_MACHINE_NAME $DOCKER_MACHINE_NAME
-
   eval $(docker-machine env --unset)
 }
 
@@ -70,9 +84,11 @@ setup_tab_shell() {
 setup_docker_machine() {
   local session="$1"
   local docker_machine_env="$2"
+  local stack_name="$3"
+
   if [ "$docker_machine_env" != "dev" ]; then
-    export RAW_MACHINE_STORAGE_PATH="$HOME/Projects/Octoblu/swarm-$docker_machine_env/machine-template"
-    export MACHINE_STORAGE_PATH="$HOME/Projects/Octoblu/swarm-$docker_machine_env/machine"
+    export RAW_MACHINE_STORAGE_PATH="$HOME/Projects/Octoblu/swarm-$docker_machine_env/stacks/$stack_name/machine-template"
+    export MACHINE_STORAGE_PATH="$HOME/Projects/Octoblu/swarm-$docker_machine_env/stacks/$stack_name/machine"
     tmux set-environment -t $session MACHINE_STORAGE_PATH "$MACHINE_STORAGE_PATH"
     mkdir -p "$MACHINE_STORAGE_PATH"
     cp -rfp $RAW_MACHINE_STORAGE_PATH/* $MACHINE_STORAGE_PATH
@@ -99,10 +115,16 @@ attach_session() {
 create_session() {
   local session="$1"
   local docker_machine_env="$2"
-  export STACK_ENV_DIR="$HOME/Projects/Octoblu/swarm-$docker_machine_env"
+  local stack_name="$3"
+  export SWARM_ENV_DIR="$HOME/Projects/Octoblu/swarm-$docker_machine_env"
+  export STACK_ENV_DIR="$SWARM_ENV_DIR/stacks/$stack_name"
+  export STACK_NAME="$docker_machine_env-$stack_name"
+
   cd "$STACK_ENV_DIR"
   tmux new-session -s "$session" -c "$STACK_ENV_DIR" -n √ø -d
+  tmux set-environment -t $session SWARM_ENV_DIR $SWARM_ENV_DIR
   tmux set-environment -t $session STACK_ENV_DIR $STACK_ENV_DIR
+  tmux set-environment -t $session STACK_NAME $STACK_NAME
 }
 
 has_session() {
@@ -132,7 +154,7 @@ script_directory(){
 }
 
 usage(){
-  echo 'USAGE: octomux <docker_machine_env>'
+  echo 'USAGE: octomux <docker_machine_env> <stack_name>'
   echo ''
   echo 'Arguments:'
   echo '  -h, --help         print this help text'
@@ -151,7 +173,8 @@ version(){
 }
 
 main() {
-  local docker_machine_env="$1";
+  local docker_machine_env
+  local stack_name
   while [ "$1" != "" ]; do
     local param="$1"
     local value="$2"
@@ -170,25 +193,27 @@ main() {
           usage
           exit 1
         fi
-        if [ ! -z "$param" ]; then
+        if [ -z "$docker_machine_env" ]; then
           docker_machine_env="$param"
+        elif [ -z "$stack_name" ]; then
+          stack_name="$param"
         fi
         ;;
     esac
     shift
   done
 
-  assert_required_params "$docker_machine_env"
+  assert_required_params "$docker_machine_env" "$stack_name"
   assert_required_tools
 
-  local machine_id="octoblu-$docker_machine_env-manager-1"
-  local session="octoswarm-$docker_machine_env"
+  local machine_id="$(get_manager_machine_id "$docker_machine_env" "$stack_name")"
+  local session="octoswarm-$docker_machine_env-$stack_name"
 
   start_server
   has_session "$session"
   if [ "$?" != "0" ]; then
-    create_session "$session" "$docker_machine_env"
-    setup_docker_machine "$session" "$docker_machine_env"
+    create_session "$session" "$docker_machine_env" "$stack_name"
+    setup_docker_machine "$session" "$docker_machine_env" "$stack_name"
     setup_session "$session" "$machine_id"
     setup_tab_zero "$session"
     setup_tab_shell "$session"
