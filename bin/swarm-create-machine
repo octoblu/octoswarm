@@ -127,8 +127,9 @@ main() {
   assert_required_params "$machine_id"
   echo "Creating $machine_id"
   create_machine "$machine_id" "$*" && \
-    mkdir -p "$STACK_ENV_DIR/machine/machines" "$STACK_ENV_DIR/machine-template/machines" && \
-    copy_to_template "$machine_id" "$STACK_ENV_DIR/machine/machines" "$STACK_ENV_DIR/machine-template/machines"
+    mkdir -p "$STACK_ENV_DIR/machine/machines" "$STACK_ENV_DIR/machine-template/machines" "$STACK_ENV_DIR/machine-template/certs" && \
+    copy_to_template "$machine_id" "$STACK_ENV_DIR/machine/machines" "$STACK_ENV_DIR/machine-template/machines" && \
+    cp -rfp $STACK_ENV_DIR/machine/certs/* "$STACK_ENV_DIR/machine-template/certs/"
 }
 
 main "$@"

@@ -119,12 +119,14 @@ create_session() {
   export SWARM_ENV_DIR="$HOME/Projects/Octoblu/swarm-$docker_machine_env"
   export STACK_ENV_DIR="$SWARM_ENV_DIR/stacks/$stack_name"
   export STACK_NAME="$docker_machine_env-$stack_name"
+  export SWARM_NAME="$docker_machine_env"
 
   cd "$STACK_ENV_DIR"
   tmux new-session -s "$session" -c "$STACK_ENV_DIR" -n √ø -d
   tmux set-environment -t $session SWARM_ENV_DIR $SWARM_ENV_DIR
   tmux set-environment -t $session STACK_ENV_DIR $STACK_ENV_DIR
   tmux set-environment -t $session STACK_NAME $STACK_NAME
+  tmux set-environment -t $session SWARM_NAME $SWARM_NAME
 }
 
 has_session() {
