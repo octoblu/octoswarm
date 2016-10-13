@@ -13,8 +13,9 @@ assert_machine_name(){
 assert_required_params(){
   local service_name="$1"
   local instance_name="$2"
+  local cmd="$3"
 
-  if [ -n "$service_name" -a -n "$instance_name" ]; then
+  if [ -n "$service_name" -a -n "$instance_name" -a -n "$cmd" ]; then
     return 0
   fi
 
@@ -27,6 +28,10 @@ assert_required_params(){
 
   if [ -z "$service_name" ]; then
     echo "service_name is required"
+  fi
+
+  if [ -z "$cmd" ]; then
+    echo "cmd is required"
   fi
 
   exit 1
@@ -54,7 +59,7 @@ script_directory(){
 }
 
 usage(){
-  echo 'USAGE: swarm-follow-instance <service-name> <instance-name>'
+  echo 'USAGE: swarm-exec-instance <service-name> <instance-name> <cmd>'
   echo ''
   echo 'Arguments:'
   echo '  -h, --help         print this help text'
@@ -118,6 +123,7 @@ get_docker_instance_name_suffix() {
 follow_instance() {
   local service_name="$1"
   local instance_name="$2"
+  local cmd="$3"
 
   local machine_name="$(get_docker_machine_name $service_name $instance_name)"
   assert_machine_name "$machine_name" "$service_name" "$instance_name"
@@ -126,7 +132,7 @@ follow_instance() {
   local docker_config="$(docker-machine config $machine_name)"
 
   echo "Following $docker_instance_name..."
-  docker $docker_config logs -f "$docker_instance_name"
+  docker $docker_config exec -it "$docker_instance_name" $3
 
   echo "following: $service_name.$instance_name"
 
@@ -135,6 +141,7 @@ follow_instance() {
 main() {
   local service_name;
   local instance_name;
+  local cmd;
 
   while [ "$1" != "" ]; do
     local param="$1"
@@ -158,14 +165,16 @@ main() {
           service_name="$param"
         elif [ -z "$instance_name" ]; then
           instance_name="$param"
+        elif [ -z "$cmd" ]; then
+          cmd="$param"
         fi
         ;;
     esac
     shift
   done
 
-  assert_required_params "$service_name" "$instance_name"
-  follow_instance "$service_name" "$instance_name"
+  assert_required_params "$service_name" "$instance_name" "$cmd"
+  follow_instance "$service_name" "$instance_name" "$cmd"
 }
 
 main "$@"

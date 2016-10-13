@@ -1,28 +1,16 @@
 #!/bin/bash
 
 assert_required_params(){
-  local role_name="$1"
+  local service_name="$1"
 
-  if [ -n "$role_name" ]; then
+  if [ -n "$service_name" ]; then
     return 0
   fi
 
   usage
 
-  if [ -z "$role_name" ]; then
-    echo "role_name is missing"
-  fi
-
-  exit 1
-}
-
-assert_required_env() {
-  if [ -n "$STACK_NAME" ]; then
-    return 0
-  fi
-
-  if [ -z "$STACK_NAME" ]; then
-    echo "Missing env STACK_NAME. Are you running in an octoswarm-init session?"
+  if [ -z "$service_name" ]; then
+    echo "service_name is missing"
   fi
 
   exit 1
@@ -50,7 +38,7 @@ script_directory(){
 }
 
 usage(){
-  echo 'USAGE: swarm-generate-machine-id <role_name>'
+  echo 'USAGE: swarm-get-latest-docker-url <service-name>'
   echo ''
   echo 'Arguments:'
   echo '  -h, --help         print this help text'
@@ -67,8 +55,14 @@ version(){
   fi
 }
 
+get_beekeeper_docker_url() {
+  local service_name="$1"
+  local latest_docker_url="$(curl -s "https://beekeeper.octoblu.com/deployments/$service_name/latest" | jq -r '.docker_url')"
+  echo "$latest_docker_url"
+}
+
 main() {
-  local role_name
+  local service_name
 
   while [ "$1" != "" ]; do
     local param="$1"
@@ -88,22 +82,17 @@ main() {
           usage
           exit 1
         fi
-        if [ -z "$role_name" ]; then
-          role_name="${param}"
+        if [ -z "$service_name" -a -n "$param" ]; then
+         service_name="${param}"
         fi
         ;;
     esac
     shift
   done
+  assert_required_params "$service_name"
 
-  assert_required_params "$role_name"
-
-  assert_required_env
-
-  local NEW_UUID=$(cat /dev/urandom | env LC_CTYPE=C tr -dc 'a-z0-9' | fold -w 6 | head -n 1)
-  local machine_id="$STACK_NAME-$role_name-$NEW_UUID"
-
-  echo "$machine_id"
+  local docker_url="$(get_beekeeper_docker_url "$service_name")"
+  echo "$docker_url"
 }
 
 main "$@"
