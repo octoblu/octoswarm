@@ -8,16 +8,16 @@ assert_required_tools(){
 }
 
 assert_required_params(){
-  local docker_machine_env="$1"
+  local stack_env_name="$1"
 
-  if [ -n "$docker_machine_env" -a -n "$stack_name"  ]; then
+  if [ -n "$stack_env_name" -a -n "$stack_name"  ]; then
     return 0
   fi
 
   usage
 
-  if [ -z "$docker_machine_env" ]; then
-    echo "docker_machine_env is missing"
+  if [ -z "$stack_env_name" ]; then
+    echo "stack_env_name is missing"
   fi
 
   if [ -z "$stack_name" ]; then
@@ -28,12 +28,12 @@ assert_required_params(){
 }
 
 get_manager_machine_id(){
-  local docker_machine_env="$1"
+  local stack_env_name="$1"
   local stack_name="$2"
-  if [ ! -d "$HOME/Projects/Octoblu/swarm-$docker_machine_env/stacks/$stack_name" ]; then
+  if [ ! -d "$HOME/Projects/Octoblu/swarm-$stack_env_name/stacks/$stack_name" ]; then
     return 1
   fi
-  local dir="$HOME/Projects/Octoblu/swarm-$docker_machine_env/stacks/$stack_name/machine/machines"
+  local dir="$HOME/Projects/Octoblu/swarm-$stack_env_name/stacks/$stack_name/machine/machines"
 
   local random_dir="$(find "$dir" -iname '*manager-*' -maxdepth 1 -mindepth 1 -type d -print0 | gsort --zero-terminated --random-sort | head -1)"
   echo $(basename "$random_dir")
@@ -84,13 +84,13 @@ setup_tab_shell() {
 
 assert_machine_id() {
   local machine_id="$1"
-  local docker_machine_env="$2"
+  local stack_env_name="$2"
   if [ -z "$machine_id" ]; then
     echo 'Error: Unable to get machine id, this stack may not exist'
     echo ''
     echo 'It can be one of the following:'
     echo ''
-    ls "$HOME/Projects/Octoblu/swarm-$docker_machine_env/stacks"
+    ls "$HOME/Projects/Octoblu/swarm-$stack_env_name/stacks"
     echo ''
     echo 'If you are trying to create a new cluster, try running octoswarm-init'
     echo ''
@@ -99,11 +99,11 @@ assert_machine_id() {
 }
 
 setup_machine_storage_path() {
-  local docker_machine_env="$1"
+  local stack_env_name="$1"
   local stack_name="$2"
 
-  local raw_machine_storage_path="$HOME/Projects/Octoblu/swarm-$docker_machine_env/stacks/$stack_name/machine-template"
-  local machine_storage_path="$HOME/Projects/Octoblu/swarm-$docker_machine_env/stacks/$stack_name/machine"
+  local raw_machine_storage_path="$HOME/Projects/Octoblu/swarm-$stack_env_name/stacks/$stack_name/machine-template"
+  local machine_storage_path="$HOME/Projects/Octoblu/swarm-$stack_env_name/stacks/$stack_name/machine"
 
   if [ ! -d "$raw_machine_storage_path" ]; then
     echo "Missing stack machine-template"
@@ -121,11 +121,11 @@ setup_machine_storage_path() {
 
 setup_docker_machine() {
   local session="$1"
-  local docker_machine_env="$2"
+  local stack_env_name="$2"
   local stack_name="$3"
 
-  if [ "$docker_machine_env" != "dev" ]; then
-    setup_machine_storage_path "$docker_machine_env" "$stack_name" || fatal 'unable to setup up machine storage path'
+  if [ "$stack_env_name" != "dev" ]; then
+    setup_machine_storage_path "$stack_env_name" "$stack_name" || fatal 'unable to setup up machine storage path'
   fi
 }
 
@@ -140,12 +140,12 @@ attach_session() {
 
 create_session() {
   local session="$1"
-  local docker_machine_env="$2"
+  local stack_env_name="$2"
   local stack_name="$3"
-  export SWARM_ENV_DIR="$HOME/Projects/Octoblu/swarm-$docker_machine_env"
+  export SWARM_ENV_DIR="$HOME/Projects/Octoblu/swarm-$stack_env_name"
   export STACK_ENV_DIR="$SWARM_ENV_DIR/stacks/$stack_name"
-  export STACK_NAME="$docker_machine_env-$stack_name"
-  export SWARM_NAME="$docker_machine_env"
+  export STACK_NAME="$stack_env_name-$stack_name"
+  export SWARM_NAME="$stack_env_name"
 
   cd "$STACK_ENV_DIR"
   tmux new-session -s "$session" -c "$STACK_ENV_DIR" -n √ø -d
@@ -202,7 +202,7 @@ version(){
 }
 
 main() {
-  local docker_machine_env
+  local stack_env_name
   local stack_name
   while [ "$1" != "" ]; do
     local param="$1"
@@ -222,8 +222,8 @@ main() {
           usage
           exit 1
         fi
-        if [ -z "$docker_machine_env" ]; then
-          docker_machine_env="$param"
+        if [ -z "$stack_env_name" ]; then
+          stack_env_name="$param"
         elif [ -z "$stack_name" ]; then
           stack_name="$param"
         fi
@@ -232,20 +232,20 @@ main() {
     shift
   done
 
-  assert_required_params "$docker_machine_env" "$stack_name"
+  assert_required_params "$stack_env_name" "$stack_name"
   assert_required_tools
 
-  local machine_id="$(get_manager_machine_id "$docker_machine_env" "$stack_name")"
+  local machine_id="$(get_manager_machine_id "$stack_env_name" "$stack_name")"
 
-  assert_machine_id "$machine_id" "$docker_machine_env"
+  assert_machine_id "$machine_id" "$stack_env_name"
 
-  local session="octoswarm-$docker_machine_env-$stack_name"
+  local session="octoswarm-$stack_env_name-$stack_name"
 
   start_server
   has_session "$session" 2> /dev/null
   if [ "$?" != "0" ]; then
-    create_session "$session" "$docker_machine_env" "$stack_name"
-    setup_docker_machine "$session" "$docker_machine_env" "$stack_name"
+    create_session "$session" "$stack_env_name" "$stack_name"
+    setup_docker_machine "$session" "$stack_env_name" "$stack_name"
     setup_session "$session" "$machine_id"
     setup_tab_zero "$session"
     setup_tab_shell "$session"
