@@ -30,7 +30,9 @@ assert_required_params(){
 get_manager_machine_id(){
   local docker_machine_env="$1"
   local stack_name="$2"
-
+  if [ ! -d "$HOME/Projects/Octoblu/swarm-$docker_machine_env/stacks/$stack_name" ]; then
+    return 1
+  fi
   local dir="$HOME/Projects/Octoblu/swarm-$docker_machine_env/stacks/$stack_name/machine/machines"
 
   mkdir -p "$dir"
@@ -81,25 +83,57 @@ setup_tab_shell() {
   tmux new-window -t "${session}:1" -n "shell" || return 1
 }
 
+assert_machine_id() {
+  local machine_id="$1"
+  local docker_machine_env="$2"
+  if [ -z "$machine_id" ]; then
+    echo 'Error: Unable to get machine id, this stack may not exist'
+    echo ''
+    echo 'It can be one of the following:'
+    echo ''
+    ls "$HOME/Projects/Octoblu/swarm-$docker_machine_env/stacks"
+    echo ''
+    exit 1
+  fi
+}
+
+setup_machine_storage_path() {
+  local docker_machine_env="$1"
+  local stack_name="$2"
+
+  local raw_machine_storage_path="$HOME/Projects/Octoblu/swarm-$docker_machine_env/stacks/$stack_name/machine-template"
+  local machine_storage_path="$HOME/Projects/Octoblu/swarm-$docker_machine_env/stacks/$stack_name/machine"
+
+  if [ ! -d "$raw_machine_storage_path" ]; then
+    echo "Missing stack machine-template"
+    exit 1
+  fi
+
+  mkdir -p $machine_storage_path
+  cp -rfp $raw_machine_storage_path/* $MACHINE_STORAGE_PATH
+
+  export RAW_MACHINE_STORAGE_PATH="$raw_machine_storage_path"
+  export MACHINE_STORAGE_PATH="$machine_storage_path"
+
+  tmux set-environment -t $session MACHINE_STORAGE_PATH "$machine_storage_path"
+
+  pushd "$machine_storage_path" > /dev/null
+    for file in `find . -iname '*.json'`; do
+      cat "$file" | envsubst > "$file.tmp" && mv "$file.tmp" "$file"
+    done
+    for file in `find . -iname 'id_rsa'`; do
+      chmod 600 "$file"
+    done
+  popd > /dev/null
+}
+
 setup_docker_machine() {
   local session="$1"
   local docker_machine_env="$2"
   local stack_name="$3"
 
   if [ "$docker_machine_env" != "dev" ]; then
-    export RAW_MACHINE_STORAGE_PATH="$HOME/Projects/Octoblu/swarm-$docker_machine_env/stacks/$stack_name/machine-template"
-    export MACHINE_STORAGE_PATH="$HOME/Projects/Octoblu/swarm-$docker_machine_env/stacks/$stack_name/machine"
-    tmux set-environment -t $session MACHINE_STORAGE_PATH "$MACHINE_STORAGE_PATH"
-    mkdir -p "$MACHINE_STORAGE_PATH"
-    cp -rfp $RAW_MACHINE_STORAGE_PATH/* $MACHINE_STORAGE_PATH
-    pushd $MACHINE_STORAGE_PATH
-      for file in `find . -iname '*.json'`; do
-        cat "$file" | envsubst > "$file.tmp" && mv "$file.tmp" "$file"
-      done
-      for file in `find . -iname 'id_rsa'`; do
-        chmod 600 "$file"
-      done
-    popd
+    setup_machine_storage_path "$docker_machine_env" "$stack_name" || fatal 'unable to setup up machine storage path'
   fi
 }
 
@@ -156,7 +190,7 @@ script_directory(){
 }
 
 usage(){
-  echo 'USAGE: octomux <docker_machine_env> <stack_name>'
+  echo 'USAGE: octomux <docker-machine-env> <stack-name>'
   echo ''
   echo 'Arguments:'
   echo '  -h, --help         print this help text'
@@ -209,10 +243,13 @@ main() {
   assert_required_tools
 
   local machine_id="$(get_manager_machine_id "$docker_machine_env" "$stack_name")"
+
+  assert_machine_id "$machine_id" "$docker_machine_env"
+
   local session="octoswarm-$docker_machine_env-$stack_name"
 
   start_server
-  has_session "$session"
+  has_session "$session" 2> /dev/null
   if [ "$?" != "0" ]; then
     create_session "$session" "$docker_machine_env" "$stack_name"
     setup_docker_machine "$session" "$docker_machine_env" "$stack_name"
