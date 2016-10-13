@@ -16,18 +16,23 @@ assert_required_params(){
   exit 1
 }
 
-debug() {
+should_debug() {
   local debug_key='create-machine'
-  local cyan='\033[0;36m'
-  local no_color='\033[0;0m'
   if [ -z "$DEBUG" ]; then
-    return 0
+    return 1
   fi
   echo "$debug_key" | grep "$DEBUG"
   local is_valid_debug="$?"
   if [ "$debug_key" == '*' -a "$is_valid_debug" != "0" ]; then
-    return 0
+    return 1
   fi
+  return 0
+}
+
+debug() {
+  local cyan='\033[0;36m'
+  local no_color='\033[0;0m'
+  should_debug || return 0
   local message="$@"
   (>&2 echo -e "[${cyan}${debug_key}${no_color}]: $message")
 }
@@ -76,7 +81,13 @@ version(){
 create_machine() {
   local machine_id="$1"
   local options="$2"
-  echo "$(docker-machine create $options "$machine_id")"
+  should_debug
+  local should_debug_code=$?
+  local debug_flag
+  if [ "$should_debug_code" == "0" ]; then
+    debug_flag="--debug"
+  fi
+  echo "$(docker-machine $debug_flag create $options "$machine_id")"
 }
 
 copy_to_template() {
@@ -86,7 +97,7 @@ copy_to_template() {
 
   cp -rfp "$src_dir/$machine_id" "$dest_dir/$machine_id"
   local config_file="$dest_dir/$machine_id/config.json"
-  cat  "$config_file" | sed "s;$HOME;\$HOME;g" > "$config_file.tmp" && \
+  cat "$config_file" | sed "s;$HOME;\$HOME;g" > "$config_file.tmp" && \
     mv "$config_file.tmp" "$config_file"
 }
 
