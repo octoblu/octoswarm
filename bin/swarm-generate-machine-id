@@ -67,15 +67,6 @@ version(){
   fi
 }
 
-stop_service() {
-  local service_name="$1"
-  local directory="$2"
-  pushd "$directory/services/$service_name" > /dev/null
-  echo "stopping $service_name"
-  ./stop
-  popd > /dev/null
-}
-
 main() {
   local role_name
 

@@ -2,7 +2,7 @@
 
 assert_machine_name(){
   local machine_name="$1"
-  local service_name="$3"
+  local service_name="$2"
   local instance_name="$3"
 
   if [ -z "$machine_name" ]; then
@@ -78,7 +78,7 @@ get_service_line(){
   local instance_name="$2"
 
   docker service ps "$service_name" \
-  | grep Running \
+  | grep -v '\\_' \
   | grep "${service_name}.${instance_name}"
 }
 
@@ -120,7 +120,7 @@ follow_instance() {
   local instance_name="$2"
 
   local machine_name="$(get_docker_machine_name $service_name $instance_name)"
-  assert_machine_name "$machine_name"
+  assert_machine_name "$machine_name" "$service_name" "$instance_name"
 
   local docker_instance_name="$(get_docker_instance_name $service_name $instance_name)"
   local docker_config="$(docker-machine config $machine_name)"

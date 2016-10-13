@@ -1,8 +1,7 @@
 #!/bin/bash
 
 assert_required_tools(){
-  if [ "$(which envsubst)" == "" ]; then
-    echo "Missing 'envsubst' utility. 'brew install gettext; brew link gettext --force' to install."
+  if [ "$(which envsubst)" == "" ]; then echo "Missing 'envsubst' utility. 'brew install gettext; brew link gettext --force' to install."
     exit 1
   fi
 }
