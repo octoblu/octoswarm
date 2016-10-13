@@ -81,10 +81,11 @@ setup_tab_shell() {
   tmux new-window -t "${session}:1" -n "shell" || return 1
 }
 
-assert_machine_id() {
-  local machine_id="$1"
-  local stack_env_name="$2"
-  if [ -z "$machine_id" ]; then
+assert_stack_dir() {
+  local stack_env_name="$1"
+  local stack_name="$2"
+  local stack_env_dir="$HOME/Projects/Octoblu/swarm-$stack_env_name/stacks/$stack_name"
+  if [ ! -d "$stack_env_dir" ]; then
     echo 'Error: Unable to get machine id, this stack may not exist'
     echo ''
     echo 'It can be one of the following:'
@@ -242,6 +243,7 @@ main() {
 
   assert_required_params "$stack_env_name" "$stack_name"
   assert_required_tools
+  assert_stack_dir "$stack_env_name" "$stack_name"
 
   local session="octoswarm-$stack_env_name-$stack_name"
 
@@ -250,9 +252,7 @@ main() {
   if [ "$?" != "0" ]; then
     create_session "$session" "$stack_env_name" "$stack_name"
     setup_docker_machine "$session" "$stack_env_name" "$stack_name"
-    local machine_id="$(get_manager_machine_id "$stack_env_name" "$stack_name")"
-    assert_machine_id "$machine_id" "$stack_env_name"
-    setup_session "$session" "$machine_id"
+    setup_session "$session" "$(get_manager_machine_id "$stack_env_name" "$stack_name")"
     setup_tab_zero "$session"
     setup_tab_shell "$session"
     select_tab "$session" "1" 2> /dev/null
