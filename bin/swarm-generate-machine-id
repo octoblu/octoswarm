@@ -16,6 +16,18 @@ assert_required_params(){
   exit 1
 }
 
+assert_required_env() {
+  if [ -n "$STACK_NAME" ]; then
+    return 0
+  fi
+
+  if [ -z "$STACK_NAME" ]; then
+    echo "Missing env STACK_NAME. Are you running in an octoswarm-init session?"
+  fi
+
+  exit 1
+}
+
 fatal() {
   local message="$1"
   echo "Error: $message"
@@ -85,14 +97,17 @@ main() {
           usage
           exit 1
         fi
-        if [ -z "$role_name" -a -n "$param" ]; then
-         role_name="${param}"
+        if [ -z "$role_name" ]; then
+          role_name="${param}"
         fi
         ;;
     esac
     shift
   done
+
   assert_required_params "$role_name"
+
+  assert_required_env
 
   local NEW_UUID=$(cat /dev/urandom | env LC_CTYPE=C tr -dc 'a-z0-9' | fold -w 6 | head -n 1)
   local machine_id="$STACK_NAME-$role_name-$NEW_UUID"
