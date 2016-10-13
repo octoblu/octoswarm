@@ -16,8 +16,14 @@ assert_required_params(){
   exit 1
 }
 
+assert_required_env() {
+  if [ -z "$STACK_ENV_DIR" ]; then
+    fatal "Missing STACK_ENV_DIR"
+  fi
+}
+
 should_debug() {
-  local debug_key='create-machine'
+  local debug_key='swarm-create-machine'
   if [ -z "$DEBUG" ]; then
     return 1
   fi
@@ -134,6 +140,8 @@ main() {
   done
 
   local template_dir=""
+
+  assert_required_env
 
   assert_required_params "$machine_id"
   echo "Creating $machine_id"

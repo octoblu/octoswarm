@@ -110,10 +110,19 @@ setup_machine_storage_path() {
   fi
 
   mkdir -p $machine_storage_path
-  cp -rfp $raw_machine_storage_path/* $MACHINE_STORAGE_PATH
+  cp -rfp $raw_machine_storage_path/* $machine_storage_path
 
   export RAW_MACHINE_STORAGE_PATH="$raw_machine_storage_path"
   export MACHINE_STORAGE_PATH="$machine_storage_path"
+
+  pushd "$machine_storage_path" > /dev/null
+    for file in `find . -iname '*.json'`; do
+      cat "$file" | envsubst > "$file.tmp" && mv "$file.tmp" "$file"
+    done
+    for file in `find . -iname 'id_rsa'`; do
+      chmod 600 "$file"
+    done
+  popd > /dev/null
 
   tmux set-environment -t $session MACHINE_STORAGE_PATH "$machine_storage_path"
 }
@@ -234,10 +243,6 @@ main() {
   assert_required_params "$stack_env_name" "$stack_name"
   assert_required_tools
 
-  local machine_id="$(get_manager_machine_id "$stack_env_name" "$stack_name")"
-
-  assert_machine_id "$machine_id" "$stack_env_name"
-
   local session="octoswarm-$stack_env_name-$stack_name"
 
   start_server
@@ -245,6 +250,8 @@ main() {
   if [ "$?" != "0" ]; then
     create_session "$session" "$stack_env_name" "$stack_name"
     setup_docker_machine "$session" "$stack_env_name" "$stack_name"
+    local machine_id="$(get_manager_machine_id "$stack_env_name" "$stack_name")"
+    assert_machine_id "$machine_id" "$stack_env_name"
     setup_session "$session" "$machine_id"
     setup_tab_zero "$session"
     setup_tab_shell "$session"
