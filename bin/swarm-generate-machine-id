@@ -22,7 +22,7 @@ assert_required_env() {
   fi
 
   if [ -z "$STACK_NAME" ]; then
-    echo "Missing env STACK_NAME. Are you running in an octoswarm-init session?"
+    echo "Missing env STACK_NAME. Are you running in an octoswarm session?"
   fi
 
   exit 1
