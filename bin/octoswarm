@@ -84,7 +84,7 @@ setup_tab_shell() {
 assert_stack_dir() {
   local stack_env_name="$1"
   local stack_name="$2"
-  local stack_env_dir="$HOME/Projects/Octoblu/swarm-$stack_env_name/stacks/$stack_name"
+  local stack_env_dir="$HOME/Projects/Octoblu/swarm-$stack_env_name/stacks/$stack_name/machine-template"
   if [ ! -d "$stack_env_dir" ]; then
     echo 'Error: Unable to get machine id, this stack may not exist'
     echo ''
