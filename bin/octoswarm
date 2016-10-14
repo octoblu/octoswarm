@@ -92,7 +92,7 @@ assert_stack_dir() {
     echo ''
     ls "$HOME/Projects/Octoblu/swarm-$stack_env_name/stacks"
     echo ''
-    echo 'If you are trying to create a new cluster, try running octoswarm'
+    echo 'If you are trying to create a new cluster, use stack-initialize instead'
     echo ''
     exit 1
   fi
