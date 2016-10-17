@@ -92,6 +92,11 @@ main() {
   assert_required_params "$service_name"
 
   local docker_url="$(get_beekeeper_docker_url "$service_name")"
+  if [ -z "$docker_url" -o "$docker_url" == "null" ]; then
+    echo "Could not get latests docker url, PANIC!!" 1>&2
+    exit 1
+  fi
+
   echo "$docker_url"
 }
 
