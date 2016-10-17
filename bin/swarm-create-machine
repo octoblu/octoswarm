@@ -87,13 +87,7 @@ version(){
 create_machine() {
   local machine_id="$1"
   local options="$2"
-  should_debug
-  local should_debug_code=$?
-  local debug_flag
-  if [ "$should_debug_code" == "0" ]; then
-    debug_flag="--debug"
-  fi
-  echo "$(docker-machine $debug_flag create $options "$machine_id")"
+  echo "$(docker-machine create $options "$machine_id")"
 }
 
 copy_to_template() {
