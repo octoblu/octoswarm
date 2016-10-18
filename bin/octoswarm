@@ -79,6 +79,10 @@ setup_tab_zero() {
 setup_tab_shell() {
   local session="$1"
   tmux new-window -t "${session}:1" -n "shell" || return 1
+  if [ -n "$OCTOSWARM_INIT_CMD" ]; then
+    tmux send-keys -t "${session}:1" C-m || return 1
+    tmux send-keys -t "${session}:1" "$OCTOSWARM_INIT_CMD" C-m || return 1
+  fi
 }
 
 assert_stack_dir() {
@@ -92,7 +96,7 @@ assert_stack_dir() {
     echo ''
     ls "$HOME/Projects/Octoblu/swarm-$stack_env_name/stacks"
     echo ''
-    echo 'If you are trying to create a new cluster, use stack-initialize instead'
+    echo 'If you are trying to create a new cluster, use stack-initialize, or stack-ensure-cluster instead'
     echo ''
     exit 1
   fi
@@ -197,6 +201,8 @@ usage(){
   echo 'Arguments:'
   echo '  -h, --help         print this help text'
   echo '  -v, --version      print the version'
+  echo 'Environment:'
+  echo '  OCTOSWARM_INIT_CMD  the command to run when the octoswarm is updated'
   echo ''
 }
 
