@@ -1,9 +1,5 @@
 #!/bin/bash
 
-if [ -z "$STACK_BIN_DIR" ]; then
-  STACK_BIN_DIR="$SWARM_ENV_DIR/bin"
-fi
-
 debug() {
   local debug_key='stack'
   local cyan='\033[0;36m'
@@ -98,13 +94,26 @@ assert_stack_script() {
 main() {
   local script_name="$1"
 
-  assert_stack_dirs
+  local swarm_env_dir="$SWARM_ENV_DIR"
+  local stack_bin_dir="$STACK_BIN_DIR"
+
+  if [ -z "$swarm_env_dir" ]; then
+    swarm_env_dir="$HOME/Projects/Octoblu/swarm-prod"
+    export SWARM_ENV_DIR="$swarm_env_dir"
+  fi
+
+  if [ -z "$stack_bin_dir" -a -n "$swarm_env_dir" ]; then
+    stack_bin_dir="$swarm_env_dir/bin"
+    export STACK_BIN_DIR="$stack_bin_dir"
+  fi
+
+  assert_stack_dirs "$swarm_env_dir" "$stack_bin_dir"
   assert_stack_script "$script_name"
 
   if [ "$?" == "0" ]; then
     shift
     debug "running script stack-$script_name"
-    run_script "$STACK_BIN_DIR/stack-$script_name" "$@"
+    run_script "$stack_bin_dir/stack-$script_name" "$@"
     exit $?
   fi
 
