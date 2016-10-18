@@ -1,11 +1,11 @@
 #!/bin/bash
 
 assert_required_params(){
-  local stack_env_dir="$1"
+  local swarm_env_dir="$1"
   local service_name="$2"
   local subdomain="$3"
 
-  if [ -n "$stack_env_dir" -a -n "$service_name" -a -n "$subdomain" ]; then
+  if [ -n "$swarm_env_dir" -a -n "$service_name" -a -n "$subdomain" ]; then
     return 0
   fi
 
@@ -15,8 +15,8 @@ assert_required_params(){
     echo "service_name is required"
   fi
 
-  if [ -z "$stack_env_dir" ]; then
-    echo "STACK_ENV_DIR is empty"
+  if [ -z "$swarm_env_dir" ]; then
+    echo "SWARM_ENV_DIR is empty"
   fi
 
   if [ -z "$subdomain" ]; then
@@ -49,27 +49,27 @@ fatal() {
 }
 
 copy_env(){
-  local stack_env_dir="$1"
+  local swarm_env_dir="$1"
   local service_name="$2"
   local subdomain="$3"
 
-  local dest_dir="$stack_env_dir/env.d/$service_name"
+  local dest_dir="$swarm_env_dir/env.d/$service_name"
   if [ ! -d "$dest_dir" ]; then
     echo "WARNING! you'll need to manually copy over the environment"
   fi
 }
 
 generate_service(){
-  local stack_env_dir="$1"
+  local swarm_env_dir="$1"
   local service_name="$2"
   local subdomain="$3"
 
-  mkdir -p "$stack_env_dir/services/$service_name"
+  mkdir -p "$swarm_env_dir/services/$service_name"
   export SERVICE_NAME="$service_name" SUBDOMAIN="$subdomain"
-  local start_script="$stack_env_dir/services/$service_name/start"
-  local stop_script="$stack_env_dir/services/$service_name/stop"
-  cat "$stack_env_dir/services/_template/start" | envsubst > "$start_script" && chmod +x "$start_script"
-  cat "$stack_env_dir/services/_template/stop" | envsubst > "$stop_script" && chmod +x "$stop_script"
+  local start_script="$swarm_env_dir/services/$service_name/start"
+  local stop_script="$swarm_env_dir/services/$service_name/stop"
+  cat "$swarm_env_dir/services/_template/start" | envsubst > "$start_script" && chmod +x "$start_script"
+  cat "$swarm_env_dir/services/_template/stop" | envsubst > "$stop_script" && chmod +x "$stop_script"
   unset SERVICE_NAME
 }
 
@@ -98,7 +98,7 @@ usage(){
   echo '  -d, --subdomain    subdomain to use'
   echo 'Environment:'
   echo '  DEBUG              print debug output'
-  echo '  STACK_ENV_DIR      path to stack env directory.'
+  echo '  SWARM_ENV_DIR      path to stack env directory.'
 }
 
 version(){
@@ -112,11 +112,11 @@ version(){
 }
 
 env_add() {
-  local stack_env_dir="$1"
+  local swarm_env_dir="$1"
   local service_name="$2"
   local folder_name="$3"
 
-  local env_folder="$stack_env_dir/env.d/$folder_name"
+  local env_folder="$swarm_env_dir/env.d/$folder_name"
   if [ -d "$env_folder" ]; then
     pushd "$env_folder" > /dev/null
     for file in $(ls); do
@@ -160,15 +160,15 @@ main() {
     shift
   done
 
-  local stack_env_dir="$STACK_ENV_DIR"
+  local swarm_env_dir="$SWARM_ENV_DIR"
 
-  assert_required_params "$stack_env_dir" "$service_name" "$subdomain"
+  assert_required_params "$swarm_env_dir" "$service_name" "$subdomain"
 
-  debug "stack_env_dir: $stack_env_dir"
+  debug "swarm_env_dir: $swarm_env_dir"
   debug "service_name: $service_name"
 
-  copy_env "$stack_env_dir" "$service_name"
-  generate_service "$stack_env_dir" "$service_name" "$subdomain"
+  copy_env "$swarm_env_dir" "$service_name"
+  generate_service "$swarm_env_dir" "$service_name" "$subdomain"
 }
 
 main "$@"

@@ -1,10 +1,10 @@
 #!/bin/bash
 
 assert_required_params(){
-  local stack_env_dir="$1"
+  local swarm_env_dir="$1"
   local service_name="$2"
 
-  if [ -n "$stack_env_dir" -a -n "$service_name" ]; then
+  if [ -n "$swarm_env_dir" -a -n "$service_name" ]; then
     return 0
   fi
 
@@ -14,8 +14,8 @@ assert_required_params(){
     echo "service_name is required"
   fi
 
-  if [ -z "$stack_env_dir" ]; then
-    echo "STACK_ENV_DIR is empty"
+  if [ -z "$swarm_env_dir" ]; then
+    echo "SWARM_ENV_DIR is empty"
   fi
 
   exit 1
@@ -44,10 +44,10 @@ fatal() {
 }
 
 copy_env(){
-  local stack_env_dir="$1"
+  local swarm_env_dir="$1"
   local service_name="$2"
 
-  local dest_dir="$stack_env_dir/env.d/$service_name"
+  local dest_dir="$swarm_env_dir/env.d/$service_name"
   local src_dir="$HOME/Projects/Octoblu/the-stack-env-production/major/etcd/octoblu/$service_name/env"
   if [ -d "$src_dir" ]; then
     if [ ! -d "$dest_dir" ]; then
@@ -57,16 +57,16 @@ copy_env(){
 }
 
 generate_service(){
-  local stack_env_dir="$1"
+  local swarm_env_dir="$1"
   local service_name="$2"
   local docker_version="$3"
 
-  mkdir -p "$stack_env_dir/services/$service_name"
+  mkdir -p "$swarm_env_dir/services/$service_name"
   export SERVICE_NAME="$service_name" DOCKER_VERSION="$docker_version"
-  local start_script="$stack_env_dir/services/$service_name/start"
-  local stop_script="$stack_env_dir/services/$service_name/stop"
-  cat "$stack_env_dir/services/_template-worker/start" | envsubst > "$start_script" && chmod +x "$start_script"
-  cat "$stack_env_dir/services/_template-worker/stop" | envsubst > "$stop_script" && chmod +x "$stop_script"
+  local start_script="$swarm_env_dir/services/$service_name/start"
+  local stop_script="$swarm_env_dir/services/$service_name/stop"
+  cat "$swarm_env_dir/services/_template-worker/start" | envsubst > "$start_script" && chmod +x "$start_script"
+  cat "$swarm_env_dir/services/_template-worker/stop" | envsubst > "$stop_script" && chmod +x "$stop_script"
   unset SERVICE_NAME
 }
 
@@ -95,7 +95,7 @@ usage(){
   echo '  --docker-version   the docker version'
   echo 'Environment:'
   echo '  DEBUG              print debug output'
-  echo '  STACK_ENV_DIR      path to stack env directory.'
+  echo '  SWARM_ENV_DIR      path to stack env directory.'
 }
 
 version(){
@@ -109,11 +109,11 @@ version(){
 }
 
 env_add() {
-  local stack_env_dir="$1"
+  local swarm_env_dir="$1"
   local service_name="$2"
   local folder_name="$3"
 
-  local env_folder="$stack_env_dir/env.d/$folder_name"
+  local env_folder="$swarm_env_dir/env.d/$folder_name"
   if [ -d "$env_folder" ]; then
     pushd "$env_folder" > /dev/null
     for file in $(ls); do
@@ -164,19 +164,19 @@ main() {
     shift
   done
 
-  local stack_env_dir="$STACK_ENV_DIR"
+  local swarm_env_dir="$SWARM_ENV_DIR"
 
-  assert_required_params "$stack_env_dir" "$service_name"
+  assert_required_params "$swarm_env_dir" "$service_name"
 
-  debug "stack_env_dir: $stack_env_dir"
+  debug "swarm_env_dir: $swarm_env_dir"
   debug "service_name: $service_name"
 
   if [ -z "$docker_version" ]; then
     docker_version="$(get_docker_version $service_name)"
   fi
 
-  copy_env "$stack_env_dir" "$service_name"
-  generate_service "$stack_env_dir" "$service_name" "$docker_version"
+  copy_env "$swarm_env_dir" "$service_name"
+  generate_service "$swarm_env_dir" "$service_name" "$docker_version"
 }
 
 main "$@"
