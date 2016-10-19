@@ -82,7 +82,7 @@ assert_stack_script() {
     echo ''
     echo 'It must be one of the following scripts:'
     echo ''
-    for file in `find "$STACK_BIN_DIR" -type f -maxdepth 1`; do
+    for file in `find "$STACK_BIN_DIR" -type f -maxdepth 1 -iname 'stack-*'`; do
       echo "${file/${STACK_BIN_DIR}\/stack\-/}"
     done
     echo ''
