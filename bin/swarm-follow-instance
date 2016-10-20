@@ -54,13 +54,15 @@ script_directory(){
 }
 
 usage(){
-  echo 'USAGE: swarm-follow-instance <service-name> <instance-name>'
+  echo 'USAGE: swarm-follow-instance <service-name> <instance-name> [-- [docker-args]]'
   echo ''
   echo 'Arguments:'
   echo '  -h, --help         print this help text'
   echo '  -v, --version      print the version'
   echo ''
-  echo 'EXAMPLE: swarm-follow-instance slurry-exchange 1'
+  echo 'docker-args are passed through to the "docker logs" command'
+  echo ''
+  echo 'EXAMPLE: swarm-follow-instance slurry-exchange 1 -- --since="1h" --timestamps'
 }
 
 version(){
@@ -118,6 +120,7 @@ get_docker_instance_name_suffix() {
 follow_instance() {
   local service_name="$1"
   local instance_name="$2"
+  local additional_args="$3"
 
   local machine_name="$(get_docker_machine_name $service_name $instance_name)"
   assert_machine_name "$machine_name" "$service_name" "$instance_name"
@@ -126,7 +129,7 @@ follow_instance() {
   local docker_config="$(docker-machine config $machine_name)"
 
   echo "Following $docker_instance_name..."
-  docker $docker_config logs -f "$docker_instance_name"
+  docker $docker_config logs --follow $additional_args "$docker_instance_name"
 
   echo "following: $service_name.$instance_name"
 
@@ -135,6 +138,7 @@ follow_instance() {
 main() {
   local service_name;
   local instance_name;
+  local additional_args;
 
   while [ "$1" != "" ]; do
     local param="$1"
@@ -149,7 +153,7 @@ main() {
         exit 0
         ;;
       *)
-        if [ "${param::1}" == '-' ]; then
+        if [ "${param::1}" == '-' -a "$param" != "--" ]; then
           echo "ERROR: unknown parameter \"$param\""
           usage
           exit 1
@@ -158,6 +162,10 @@ main() {
           service_name="$param"
         elif [ -z "$instance_name" ]; then
           instance_name="$param"
+        elif [ "$param" == "--" ]; then
+          shift
+          additional_args="$@"
+          break
         fi
         ;;
     esac
@@ -165,7 +173,7 @@ main() {
   done
 
   assert_required_params "$service_name" "$instance_name"
-  follow_instance "$service_name" "$instance_name"
+  follow_instance "$service_name" "$instance_name" "$additional_args"
 }
 
 main "$@"
