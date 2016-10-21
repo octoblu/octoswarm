@@ -84,7 +84,7 @@ get_service_line(){
 
   docker service ps "$service_name" \
   | grep -v '\\_' \
-  | grep "${service_name}.${instance_name}"
+  | grep "\s${service_name}.${instance_name}\s"
 }
 
 get_docker_machine_name() {
