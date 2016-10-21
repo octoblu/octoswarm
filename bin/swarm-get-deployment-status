@@ -62,7 +62,8 @@ version(){
 get_beekeeper_tag_status() {
   local service_name="$1"
   local tag="$2"
-  curl -s "https://beekeeper.octoblu.com/deployments/$service_name/$tag" \
+  
+  curl -s "$BEEKEEPER_URI/deployments/$service_name/$tag" \
   | jq --sort-keys '.'
 }
 
