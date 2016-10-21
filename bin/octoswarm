@@ -34,7 +34,7 @@ get_manager_machine_id(){
   fi
   local dir="$HOME/Projects/Octoblu/swarm-$stack_env_name/stacks/$stack_name/machine/machines"
 
-  local random_dir="$(find "$dir" -iname '*manager-*' -maxdepth 1 -mindepth 1 -type d -print0 | gsort --zero-terminated --random-sort | head -1)"
+  local random_dir="$(find "$dir" -iname "$stack_env_name-$stack_name-manager-*" -maxdepth 1 -mindepth 1 -type d -print0 | gsort --zero-terminated --random-sort | head -1)"
   echo $(basename "$random_dir")
 }
 
@@ -79,8 +79,8 @@ setup_tab_zero() {
 setup_tab_shell() {
   local session="$1"
   tmux new-window -t "${session}:1" -n "shell" || return 1
+  tmux send-keys -t "${session}:1" C-m || return 1
   if [ -n "$OCTOSWARM_INIT_CMD" ]; then
-    tmux send-keys -t "${session}:1" C-m || return 1
     tmux send-keys -t "${session}:1" "$OCTOSWARM_INIT_CMD" C-m || return 1
   fi
 }
@@ -254,6 +254,7 @@ main() {
   local session="octoswarm-$stack_env_name-$stack_name"
 
   start_server
+
   has_session "$session" 2> /dev/null
   if [ "$?" != "0" ]; then
     create_session "$session" "$stack_env_name" "$stack_name"
@@ -263,6 +264,7 @@ main() {
     setup_tab_shell "$session"
     select_tab "$session" "1" 2> /dev/null
   fi
+
   attach_session "$session"
 }
 
