@@ -114,6 +114,7 @@ setup_machine_storage_path() {
     exit 1
   fi
 
+  rm -rf $machine_storage_path
   mkdir -p $machine_storage_path
   cp -rfp $raw_machine_storage_path/* $machine_storage_path
 
