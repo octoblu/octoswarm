@@ -6,7 +6,7 @@ assert_machine_name(){
   local instance_name="$3"
 
   if [ -z "$machine_name" ]; then
-    echo "could not find a machine running an instance named ${service_name}.${instance_name}"
+    echo "could not find a machine (${machine_name}) running an instance named ${service_name}.${instance_name}"
     exit 1
   fi
 }
@@ -78,18 +78,32 @@ version(){
 get_service_line(){
   local service_name="$1"
   local instance_name="$2"
-
   docker service ps "$service_name" \
   | grep -v '\\_' \
-  | grep "\s${service_name}.${instance_name}\s"
+  | grep "${service_name}.${instance_name}[\s\.]"
 }
 
 get_docker_machine_name() {
   local service_name="$1"
   local instance_name="$2"
+  local node_header="$(docker service ps "$service_name" | head -n 1 | awk '{print $3}')"
+  if [ "$node_header" == "NODE" ]; then
+    get_service_line "$service_name" "$instance_name" \
+    | awk '{print $3}'
+  else
+    get_service_line "$service_name" "$instance_name" \
+    | awk '{print $4}'
+  fi
+}
 
-  get_service_line "$service_name" "$instance_name" \
-  | awk '{print $4}'
+# Docker compatibility change between 1.12 and 1.13
+is_docker_suffix_instance_name() {
+  local suffix="$1"
+  local count="$(echo "$suffix" | grep -o '\.' | wc -l | xargs)"
+  if [ "$count" == "2" ]; then
+    return 0
+  fi
+  return 1
 }
 
 get_docker_instance_name() {
@@ -98,7 +112,11 @@ get_docker_instance_name() {
 
   local prefix="$(get_docker_instance_name_prefix "$service_name" "$instance_name")"
   local suffix="$(get_docker_instance_name_suffix "$service_name" "$instance_name")"
-
+  is_docker_suffix_instance_name "$suffix"
+  if [ "$?" == "0" ]; then
+    echo "$suffix"
+    return 0
+  fi
   echo "$prefix.$suffix"
 }
 
@@ -124,6 +142,7 @@ follow_instance() {
 
   local machine_name="$(get_docker_machine_name $service_name $instance_name)"
   assert_machine_name "$machine_name" "$service_name" "$instance_name"
+  echo "Using machine $machine_name"
 
   local docker_instance_name="$(get_docker_instance_name $service_name $instance_name)"
   local docker_config="$(docker-machine config $machine_name)"
@@ -132,7 +151,6 @@ follow_instance() {
   docker $docker_config logs --follow $additional_args "$docker_instance_name"
 
   echo "following: $service_name.$instance_name"
-
 }
 
 main() {
