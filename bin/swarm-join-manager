@@ -22,7 +22,7 @@ assert_required_params(){
 }
 
 debug() {
-  local debug_key='create-machine'
+  local debug_key='swarm-join-machine'
   local cyan='\033[0;36m'
   local no_color='\033[0;0m'
   if [ -z "$DEBUG" ]; then

@@ -10,6 +10,12 @@ link_bin() {
   ln -nsf $(script_directory)/bin/* ~/.bin
 }
 
+rm_old_bin() {
+  rm ~/.bin/swarm-start-service
+  rm ~/.bin/swarm-stop-service
+  rm ~/.bin/swarm-restart-service
+}
+
 script_directory(){
   local source="${BASH_SOURCE[0]}"
   local dir=""
@@ -68,6 +74,7 @@ main() {
   done
 
   link_bin
+  rm_old_bin
   echo "INSTALLED!"
 }
 

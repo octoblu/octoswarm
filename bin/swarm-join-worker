@@ -22,7 +22,7 @@ assert_required_params(){
 }
 
 debug() {
-  local debug_key='create-machine'
+  local debug_key='swarm-join-worker'
   local cyan='\033[0;36m'
   local no_color='\033[0;0m'
   if [ -z "$DEBUG" ]; then
@@ -59,7 +59,7 @@ script_directory(){
 }
 
 usage(){
-  echo 'USAGE: swarm-join-manager'
+  echo 'USAGE: swarm-join-worker'
   echo ''
   echo 'Arguments:'
   echo '  -m, --machine-id   name of the machine to create'

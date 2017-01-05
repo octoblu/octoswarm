@@ -91,7 +91,18 @@ assert_stack_script() {
   return 0
 }
 
+ensure_correct_deps() {
+  if [[ $(docker-machine --version) != *'0.9'* ]]; then
+    fatal 'docker-machine must be at least version 0.9.x'
+  fi
+  if [[ $(docker --version) != *'1.12'* ]]; then
+    fatal 'docker must be version 1.12.x'
+  fi
+  return 0
+}
+
 main() {
+  ensure_correct_deps
   local script_name="$1"
 
   local swarm_env_dir="$SWARM_ENV_DIR"

@@ -22,7 +22,7 @@ script_directory(){
 }
 
 usage(){
-  echo 'USAGE: swarm-start-service <service-name>'
+  echo 'USAGE: swarm-init-service <service-name>'
   echo ''
   echo 'Arguments:'
   echo '  -h, --help         print this help text'

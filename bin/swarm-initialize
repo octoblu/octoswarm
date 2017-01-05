@@ -67,7 +67,7 @@ main() {
     shift
   done
 
-  docker $(docker-machine config "$machine_id") swarm init  --advertise-addr eth0 --listen-addr eth0
+  docker $(docker-machine config "$machine_id") swarm init  --advertise-addr ens3 --listen-addr ens3
 }
 
 main "$@"

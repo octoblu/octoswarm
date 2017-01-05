@@ -22,7 +22,7 @@ script_directory(){
 }
 
 usage(){
-  echo 'USAGE: swarm-stop-service <service-name>'
+  echo 'USAGE: swarm-remove-service <service-name>'
   echo ''
   echo 'Arguments:'
   echo '  -h, --help         print this help text'
