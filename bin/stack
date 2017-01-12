@@ -93,9 +93,13 @@ assert_stack_script() {
 
 ensure_correct_deps() {
   if [[ $(docker-machine --version) != *'0.9'* ]]; then
+    echo 'Run the following command to install the correct version of docker-machine'
+    echo '   curl -L https://github.com/docker/machine/releases/download/v0.9.0-rc2/docker-machine-`uname -s`-`uname -m` >/usr/local/bin/docker-machine && \
+  chmod +x /usr/local/bin/docker-machine'
     fatal 'docker-machine must be at least version 0.9.x'
   fi
   if [[ $(docker --version) != *'1.12'* ]]; then
+    echo "Your docker version is not compatible, make sure Docker for Mac (Stable) is installed"
     fatal 'docker must be version 1.12.x'
   fi
   return 0

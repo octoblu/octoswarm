@@ -91,6 +91,7 @@ main() {
   if [ "$?" != "0" ]; then
     fatal "$interface"
   fi
+  
   docker $(docker-machine config "$machine_id") swarm init  --advertise-addr "$interface" --listen-addr "$interface"
 }
 
