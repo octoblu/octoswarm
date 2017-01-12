@@ -11,9 +11,15 @@ link_bin() {
 }
 
 rm_old_bin() {
-  rm ~/.bin/swarm-start-service
-  rm ~/.bin/swarm-stop-service
-  rm ~/.bin/swarm-restart-service
+  if [ -f "$HOME/.bin/swarm-start-service" ]; then
+    rm ~/.bin/swarm-start-service
+  fi
+  if [ -f "$HOME/.bin/swarm-stop-service" ]; then
+    rm ~/.bin/swarm-stop-service
+  fi
+  if [ -f "$HOME/.bin/swarm-restart-service" ]; then
+    rm ~/.bin/swarm-restart-service
+  fi
 }
 
 script_directory(){
