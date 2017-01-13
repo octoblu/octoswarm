@@ -93,9 +93,16 @@ assert_stack_script() {
 
 ensure_correct_deps() {
   if [[ $(docker-machine --version) != *'0.9'* ]]; then
+    local base_url='https://github.com/docker/machine/releases/download/v0.9.0-rc2'
+    local path_name="docker-machine-$(uname -s)-$(uname -m)"
     echo 'Run the following command to install the correct version of docker-machine'
-    echo '   curl -L https://github.com/docker/machine/releases/download/v0.9.0-rc2/docker-machine-`uname -s`-`uname -m` >/usr/local/bin/docker-machine && \
-  chmod +x /usr/local/bin/docker-machine'
+    echo ''
+    echo "[bash]: curl -L ${base_url}/${path_name} > /usr/local/bin/docker-machine && chmod +x /usr/local/bin/docker-machine"
+    echo ''
+    echo ' -- or --';
+    echo ''
+    echo "[fish]: curl -L ${base_url}/${path_name} > /usr/local/bin/docker-machine; and chmod +x /usr/local/bin/docker-machine"
+    echo ''
     fatal 'docker-machine must be at least version 0.9.x'
   fi
   if [[ $(docker --version) != *'1.12'* ]]; then
