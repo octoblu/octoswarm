@@ -92,22 +92,10 @@ assert_stack_script() {
 }
 
 ensure_correct_deps() {
-  if [[ $(docker-machine --version) != *'0.9'* ]]; then
-    local base_url='https://github.com/docker/machine/releases/download/v0.9.0-rc2'
-    local path_name="docker-machine-$(uname -s)-$(uname -m)"
-    echo 'Run the following command to install the correct version of docker-machine'
-    echo ''
-    echo "[bash]: curl -L ${base_url}/${path_name} > /usr/local/bin/docker-machine && chmod +x /usr/local/bin/docker-machine"
-    echo ''
-    echo ' -- or --';
-    echo ''
-    echo "[fish]: curl -L ${base_url}/${path_name} > /usr/local/bin/docker-machine; and chmod +x /usr/local/bin/docker-machine"
-    echo ''
-    fatal 'docker-machine must be at least version 0.9.x'
-  fi
-  if [[ $(docker --version) != *'1.12'* ]]; then
-    echo "Your docker version is not compatible, make sure Docker for Mac (Stable) is installed"
-    fatal 'docker must be version 1.12.x'
+  if [[ $(docker --version) != *'1.13'* ]]; then
+    echo "Your docker version (`docker --version`) is likely not compatible, just be safe, and upgrade it"
+    echo "Make sure Docker for Mac (Stable) is installed and up-to-date with version 1.13"
+    fatal 'docker must be version 1.13.x'
   fi
   return 0
 }
@@ -120,7 +108,14 @@ main() {
   local stack_bin_dir="$STACK_BIN_DIR"
 
   if [ -z "$swarm_env_dir" ]; then
-    swarm_env_dir="$HOME/Projects/Octoblu/swarm-prod"
+    IFS='/' read -a segments <<< "$PWD"
+    local swarm_dirname="${segments[5]}"
+    if [[ $swarm_dirname != *'swarm-'* ]]; then
+      swarm_dirname='swarm-prod'
+    else
+      (>&2 echo "NOTICE: we dynamically figured out you are running ${swarm_dirname}")
+    fi
+    swarm_env_dir="${HOME}/Projects/Octoblu/${swarm_dirname}"
     export SWARM_ENV_DIR="$swarm_env_dir"
   fi
 
