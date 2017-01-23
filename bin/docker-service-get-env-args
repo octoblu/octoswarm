@@ -22,7 +22,7 @@ assert_required_params(){
 }
 
 debug() {
-  local debug_key='docker-service-add-env'
+  local debug_key='docker-service-add-env-args'
   local cyan='\033[0;36m'
   local no_color='\033[0;0m'
   if [ -z "$DEBUG" ]; then
@@ -59,7 +59,7 @@ script_directory(){
 }
 
 usage(){
-  echo 'USAGE: docker-service-add-env <service_name>'
+  echo 'USAGE: docker-service-add-env-args <service_name>'
   echo ''
   echo 'Arguments:'
   echo '  -h, --help         print this help text'

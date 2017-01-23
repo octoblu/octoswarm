@@ -1,0 +1,55 @@
+#!/usr/bin/env node
+
+var fs = require('fs')
+
+var CONFIG_PATH       = process.env.CONFIG_PATH
+var DOMAIN            = process.env.DOMAIN
+var LOAD_BALANCER_DNS = process.env.LOAD_BALANCER_DNS
+var ZONE_ID           = process.env.ZONE_ID
+
+if(!CONFIG_PATH)       throw new Error('Missing env CONFIG_PATH')
+if(!DOMAIN)            throw new Error('Missing env DOMAIN')
+if(!LOAD_BALANCER_DNS) throw new Error('Missing env LOAD_BALANCER_DNS')
+if(!ZONE_ID)           throw new Error('Missing env ZONE_ID')
+
+var clusterJSON = JSON.parse(fs.readFileSync(CONFIG_PATH))
+var srvTemplate = require('../assets/srv-template.json')
+
+var routes = {
+  Comment: "Stack Update DNS",
+  Changes: []
+}
+
+clusterJSON.services.forEach(function(service){
+  if (!(service.traefik && service.traefik.host)) return
+
+  routes.Changes.push({
+    Action: 'UPSERT',
+    ResourceRecordSet: {
+      Name: service.traefik.host,
+      Type: 'A',
+      AliasTarget: {
+        HostedZoneId: ZONE_ID,
+        DNSName: LOAD_BALANCER_DNS,
+        EvaluateTargetHealth: false,
+      }
+    }
+  })
+})
+
+srvTemplate.forEach(function(record){
+  routes.Changes.push({
+    Action: 'UPSERT',
+    ResourceRecordSet: {
+      Name: record.subdomain + '.' + DOMAIN,
+      Type: 'SRV',
+      TTL: 300,
+      ResourceRecords: [{
+        Value: record.value
+      }]
+    }
+  })
+})
+
+console.log(JSON.stringify(routes, null, 2))
+process.exit(0)

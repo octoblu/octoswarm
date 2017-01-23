@@ -1,0 +1,123 @@
+#!/bin/bash
+
+script_directory(){
+  local source="${BASH_SOURCE[0]}"
+  local dir=""
+
+  while [ -h "$source" ]; do # resolve $source until the file is no longer a symlink
+    dir="$( cd -P "$( dirname "$source" )" && pwd )"
+    source="$(readlink "$source")"
+    [[ $source != /* ]] && source="$dir/$source" # if $source was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+  done
+
+  dir="$( cd -P "$( dirname "$source" )" && pwd )"
+
+  echo "$dir"
+}
+
+source "$(script_directory)/utils" || fatal 'unable to load utils'
+
+debug() {
+  debug_core "stack-update-changed-env" "$@"
+}
+
+assert_required_params(){
+  local service_name="$1"
+
+  if [ -n "$service_name" -a ]; then
+    return 0
+  fi
+
+  usage
+
+  if [ -z "$service_name" ]; then
+    echo "service_name is missing"
+  fi
+
+  exit 1
+}
+
+get_changed_env() {
+  local revision="${1:-HEAD}"
+  local pathname="$STACK_ENV_DIR/env.d"
+
+  git diff-tree \
+    -r \
+    --name-only \
+    --no-commit-id \
+    $revision $pathname
+}
+
+update_single_env() {
+  local file="$STACK_ENV_DIR/../../$1"
+  local env_value="$(cat $file)"
+  local env_name="$(basename $file)"
+  local service_path="$(dirname $file)"
+  local service_name="$(basename $service_path)"
+  debug "service_name $service_name"
+  debug "env_name $env_name"
+
+  echo "Updating ${env_name} to ${env_value} on ${service_name}"
+  docker service update --env-add "${env_name}=${env_value}" "$service_name"
+}
+
+usage(){
+  echo 'USAGE: stack-update-changed-env [REVISION]'
+  echo ''
+  echo 'Arguments:'
+  echo '  -h, --help         print this help text'
+  echo '  -v, --version      print the version'
+  echo 'Environment:'
+  echo '  DEBUG              print debug output'
+}
+
+version(){
+  local directory="$(script_directory)"
+
+  if [ -f "$directory/VERSION" ]; then
+    cat "$directory/VERSION"
+  else
+    echo "unknown"
+  fi
+}
+
+main() {
+  local revision;
+
+  while [ "$1" != "" ]; do
+    local param="$1"
+    local value="$2"
+    case "$param" in
+      -h | --help)
+        usage
+        exit 0
+        ;;
+      -v | --version)
+        version
+        exit 0
+        ;;
+      *)
+        if [ "${param::1}" == '-' ]; then
+          echo "ERROR: unknown parameter \"$param\""
+          usage
+          exit 1
+        fi
+        if [ -z "$revision" ]; then
+          revision="$param"
+        fi
+        ;;
+    esac
+    shift
+  done
+
+  if [ ! -d "$STACK_ENV_DIR/env.d" ]; then
+    echo "This stack does not have an environment"
+    exit 0
+  fi
+  for file in $(get_changed_env "$revision"); do
+    debug "changed file $file"
+    update_single_env "$file"
+  done
+}
+
+main "$@"

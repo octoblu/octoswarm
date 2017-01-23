@@ -1,0 +1,215 @@
+#!/bin/bash
+
+script_directory(){
+  local source="${BASH_SOURCE[0]}"
+  local dir=""
+
+  while [ -h "$source" ]; do # resolve $source until the file is no longer a symlink
+    dir="$( cd -P "$( dirname "$source" )" && pwd )"
+    source="$(readlink "$source")"
+    [[ $source != /* ]] && source="$dir/$source" # if $source was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+  done
+
+  dir="$( cd -P "$( dirname "$source" )" && pwd )"
+
+  echo "$dir"
+}
+
+source "$(script_directory)/utils" || fatal 'unable to load utils'
+
+debug() {
+  debug_core "stack-initialize" "$@"
+}
+
+usage(){
+  echo 'USAGE: stack-initialize <stack-env-name> <stack-name>'
+  echo 'Description: initialize a cluster'
+  echo ''
+  echo 'Arguments:'
+  echo '  -h, --help               print this help text'
+  echo '  -t, --ec2-instance-type  ec2 instance type to spin up'
+  echo '                           (default: t2.medium)'
+  echo '  -s, --skip-elb           skip elb creation'
+  echo '  -v, --version            print the version'
+  echo 'Environment:'
+  echo '  DEBUG                    print debug output'
+}
+
+version(){
+  local directory="$(script_directory)"
+
+  if [ -f "$directory/VERSION" ]; then
+    cat "$directory/VERSION"
+  else
+    echo "unknown"
+  fi
+}
+
+assert_required_env() {
+  if [ -n "$STACK_NAME" ]; then
+    return 0
+  fi
+
+  if [ -z "$STACK_NAME" ]; then
+    echo "Missing env STACK_NAME. Are you running in an octoswarm session?"
+  fi
+
+  exit 1
+}
+
+assert_required_params(){
+  local stack_env_name="$1"
+  local stack_name="$2"
+
+  if [ -n "$stack_env_name" -a -n "$stack_name"  ]; then
+    return 0
+  fi
+
+  usage
+
+  if [ -z "$stack_env_name" ]; then
+    echo "stack_env_name is missing"
+  fi
+
+  if [ -z "$stack_name" ]; then
+    echo "stack_name is missing"
+  fi
+
+  exit 1
+}
+
+assert_stack_empty() {
+  local stack_env_name="$1"
+  local stack_name="$2"
+  local swarm_env_dir="$HOME/Projects/Octoblu/swarm-$stack_env_name"
+  local stack_env_dir="$swarm_env_dir/stacks/$stack_name/machine-template"
+  debug "stack_env_dir $stack_env_dir"
+  if [ -d "$stack_env_dir" ]; then
+    fatal 'Stack folder already exists!'
+  fi
+}
+
+set_stack_env() {
+  local stack_env_name="$1"
+  local stack_name="$2"
+  local swarm_env_dir="$HOME/Projects/Octoblu/swarm-$stack_env_name"
+  local stack_env_dir="$swarm_env_dir/stacks/$stack_name"
+
+  if [ ! -d "$swarm_env_dir" ]; then
+    fatal "$swarm_env_dir does not exist"
+  fi
+
+  local raw_machine_storage_path="$stack_env_dir/machine-template"
+  local machine_storage_path="$stack_env_dir/machine"
+
+  rm -rf $machine_storage_path
+  mkdir -p $machine_storage_path
+  cp -rfp $raw_machine_storage_path/* $machine_storage_path 2> /dev/null
+
+  pushd "$machine_storage_path" > /dev/null
+    for file in `find . -iname '*.json'`; do
+      cat "$file" | envsubst > "$file.tmp" && mv "$file.tmp" "$file"
+    done
+    for file in `find . -iname 'id_rsa'`; do
+      chmod 600 "$file"
+    done
+  popd > /dev/null
+
+  export SWARM_ENV_DIR="$swarm_env_dir"
+  export STACK_ENV_DIR="$stack_env_dir"
+  export STACK_NAME="$stack_env_name-$stack_name"
+  export SWARM_NAME="$stack_env_name"
+
+  export RAW_MACHINE_STORAGE_PATH="$raw_machine_storage_path"
+  export MACHINE_STORAGE_PATH="$machine_storage_path"
+}
+
+unset_stack_env() {
+  unset SWARM_ENV_DIR
+  unset STACK_ENV_DIR
+  unset STACK_NAME
+  unset SWARM_NAME
+  unset RAW_MACHINE_STORAGE_PATH
+  unset MACHINE_STORAGE_PATH
+  eval $(docker-machine env --unset)
+}
+
+main() {
+  local ec2_instance_type="t2.medium"
+  local stack_env_name
+  local stack_name
+  local skip_elb
+  while [ "$1" != "" ]; do
+    local param="$1"
+    local value="$2"
+
+    case "$param" in
+      -h | --help)
+        usage
+        exit 0
+        ;;
+      -t | --ec2-instance-type)
+        ec2_instance_type="$value"
+        shift
+        ;;
+      -s | --skip-elb)
+        skip_elb="true"
+        ;;
+      -v | --version)
+        version
+        exit 0
+        ;;
+      *)
+        if [ "${param::1}" == '-' ]; then
+          echo "ERROR: unknown parameter \"$param\""
+          usage
+          exit 1
+        fi
+        if [ -z "$stack_env_name" ]; then
+          stack_env_name="$param"
+        elif [ -z "$stack_name" ]; then
+          stack_name="$param"
+        fi
+        ;;
+    esac
+    shift
+  done
+  debug "ec2_instance_type $ec2_instance_type"
+  debug "stack_env_name $stack_env_name"
+  debug "stack_name $stack_name"
+
+  assert_required_params "$stack_env_name" "$stack_name"
+  assert_stack_empty "$stack_env_dir" "$stack_name"
+  set_stack_env "$stack_env_name" "$stack_name"
+
+  local machine_id="$(swarm-generate-machine-id manager)"
+  debug "machine_id $machine_id"
+
+  local script_dir="$(script_directory)"
+
+  assert_required_env
+
+  "$script_dir/stack-create-machine" \
+    --ec2-instance-type "$ec2_instance_type" \
+    "$machine_id" || fatal 'unable to create machine'
+
+  debug 'machine is created'
+  debug 'sleep for 10 seconds to wait for docker'
+  sleep 10
+  eval $(docker-machine env --shell=bash "$machine_id")
+  swarm-initialize "$machine_id" || fatal 'unable to initialize swarm'
+
+  if [ "$skip_elb" != "true" ]; then
+    local lb_name="${stack_env_name}-${stack_name}"
+    debug "configuring elb '$lb_name'"
+
+    "$script_dir/stack-create-elb" "$lb_name" || fatal 'unable to create elb'
+
+    "$script_dir/stack-add-to-elb" "$machine_id" "$lb_name" || fatal 'unable to add stack elb'
+  fi
+
+  unset_stack_env
+  octoswarm "$stack_env_name" "$stack_name"
+}
+
+main "$@"

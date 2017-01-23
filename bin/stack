@@ -75,6 +75,12 @@ assert_stack_dirs() {
   fi
 }
 
+get_commands() {
+  for file in `find "$STACK_BIN_DIR" -type f -maxdepth 1 -iname 'stack-*'`; do
+    echo "stack ${file/${STACK_BIN_DIR}\/stack\-/}"
+  done
+}
+
 assert_stack_script() {
   local script_name="$1"
   if [ ! -f "$STACK_BIN_DIR/stack-$script_name" ]; then
@@ -82,9 +88,7 @@ assert_stack_script() {
     echo ''
     echo 'It must be one of the following scripts:'
     echo ''
-    for file in `find "$STACK_BIN_DIR" -type f -maxdepth 1 -iname 'stack-*'`; do
-      echo "${file/${STACK_BIN_DIR}\/stack\-/}"
-    done
+    get_commands
     echo ''
     return 1
   fi
@@ -120,7 +124,7 @@ main() {
   fi
 
   if [ -z "$stack_bin_dir" -a -n "$swarm_env_dir" ]; then
-    stack_bin_dir="$swarm_env_dir/bin"
+    stack_bin_dir="$(script_directory)/../stack"
     export STACK_BIN_DIR="$stack_bin_dir"
   fi
 

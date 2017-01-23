@@ -1,5 +1,0 @@
-#!/bin/bash
-service="$1"
-echo "Migrating $service"
-swarm-migrate-to-prod -s $service -d $service && \
-  swarm-init-service $service

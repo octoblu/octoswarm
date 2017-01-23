@@ -1,0 +1,48 @@
+#!/usr/bin/env node
+
+var fs = require('fs')
+var DOMAIN = process.env.DOMAIN
+var ZONE_ID = process.env.ZONE_ID
+var ALIAS  = process.env.ALIAS
+var OUTPUT_PATH  = process.env.OUTPUT_PATH
+
+if(!ALIAS) {
+  console.error('Missing env ALIAS')
+  process.exit(1)
+}
+
+if(!OUTPUT_PATH) {
+  console.error('Missing env OUTPUT_PATH')
+  process.exit(1)
+}
+
+if(!ZONE_ID) {
+  console.error('Missing env ZONE_ID')
+  process.exit(1)
+}
+
+if(!DOMAIN) {
+  console.error('Missing env DOMAIN')
+  process.exit(1)
+}
+
+var routes = {
+  Comment: "Stack Update DNS",
+  Changes: []
+}
+
+routes.Changes.push({
+  Action: 'UPSERT',
+  ResourceRecordSet: {
+    Name: DOMAIN,
+    Type: 'A',
+    AliasTarget: {
+      HostedZoneId: ZONE_ID,
+      DNSName: ALIAS,
+      EvaluateTargetHealth: false,
+    }
+  }
+})
+
+fs.writeFileSync(OUTPUT_PATH, JSON.stringify(routes, null, 2))
+process.exit(0)

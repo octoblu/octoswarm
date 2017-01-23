@@ -1,0 +1,19 @@
+[{
+  "subdomain": "_meshblu._http",
+  "value": "10 5 80 meshblu-http.smartspaces.octoblu.com"
+},{
+  "subdomain": "_meshblu._https",
+  "value": "10 5 443 meshblu-http.smartspaces.octoblu.com"
+},{
+  "subdomain": "_meshblu._socket-io-ws",
+  "value": "10 5 80 meshblu-socket-io.smartspaces.octoblu.com"
+},{
+  "subdomain": "_meshblu._socket-io-wss",
+  "value": "10 5 443 meshblu-socket-io.smartspaces.octoblu.com"
+},{
+  "subdomain": "_meshblu-firehose._socket-io-ws",
+  "value": "10 5 80 meshblu-firehose-socket-io.smartspaces.octoblu.com"
+},{
+  "subdomain": "_meshblu-firehose._socket-io-wss",
+  "value": "10 5 443 meshblu-firehose-socket-io.smartspaces.octoblu.com"
+}]

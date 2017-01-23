@@ -11,14 +11,44 @@ link_bin() {
 }
 
 rm_old_bin() {
+  if [ -f "$HOME/.bin/swarm-get-deployment-status" ]; then
+    rm ~/.bin/swarm-get-deployment-status
+  fi
+   if [ -f "$HOME/.bin/swarm-get-latest-docker-url" ]; then
+    rm ~/.bin/swarm-get-latest-docker-url
+  fi
   if [ -f "$HOME/.bin/swarm-start-service" ]; then
     rm ~/.bin/swarm-start-service
+  fi
+  if [ -f "$HOME/.bin/swarm-init-service" ]; then
+    rm ~/.bin/swarm-init-service
   fi
   if [ -f "$HOME/.bin/swarm-stop-service" ]; then
     rm ~/.bin/swarm-stop-service
   fi
+  if [ -f "$HOME/.bin/swarm-remove-service" ]; then
+    rm ~/.bin/swarm-remove-service
+  fi
   if [ -f "$HOME/.bin/swarm-restart-service" ]; then
     rm ~/.bin/swarm-restart-service
+  fi
+  if [ -f "$HOME/.bin/configure-hub-on-all-services" ]; then
+    rm ~/.bin/configure-hub-on-all-services
+  fi
+  if [ -f "$HOME/.bin/octodev-bootstrap" ]; then
+    rm ~/.bin/octodev-bootstrap
+  fi
+  if [ -f "$HOME/.bin/swarm-migrate-to-dev" ]; then
+    rm ~/.bin/swarm-migrate-to-dev
+  fi
+  if [ -f "$HOME/.bin/swarm-migrate-to-prod" ]; then
+    rm ~/.bin/swarm-migrate-to-prod
+  fi
+  if [ -f "$HOME/.bin/swarm-migrate-to-prod-and-start" ]; then
+    rm ~/.bin/swarm-migrate-to-prod-and-start
+  fi
+  if [ -f "$HOME/.bin/swarm-migrate-worker-to-prod" ]; then
+    rm ~/.bin/swarm-migrate-worker-to-prod
   fi
 }
 

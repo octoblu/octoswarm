@@ -1,0 +1,11 @@
+{
+  "CrossZoneLoadBalancing": {
+    "Enabled": true
+  },
+  "ConnectionDraining": {
+    "Enabled": false
+  },
+  "ConnectionSettings": {
+    "IdleTimeout": 300
+  }
+}
