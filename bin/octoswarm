@@ -142,7 +142,7 @@ assert_stack_dir() {
   fi
 }
 
-get_machine_storage_path() {
+setup_machine_storage_path() {
   local stack_env_name="$1"
   local stack_name="$2"
   local raw_machine_storage_path="$HOME/Projects/Octoblu/swarm-$stack_env_name/stacks/$stack_name/machine-template"
@@ -168,12 +168,7 @@ get_machine_storage_path() {
       chmod 600 "$file"
     done
   popd > /dev/null
-}
 
-setup_machine_storage_path() {
-  local stack_env_name="$1"
-  local stack_name="$2"
-  get_machine_storage_path "$stack_env_name" "$stack_name"
   tmux set-environment -t $session MACHINE_STORAGE_PATH "$machine_storage_path"
 }
 
@@ -181,10 +176,7 @@ setup_docker_machine() {
   local session="$1"
   local stack_env_name="$2"
   local stack_name="$3"
-
-  if [ "$stack_env_name" != "dev" ]; then
-    setup_machine_storage_path "$stack_env_name" "$stack_name" || fatal 'unable to setup up machine storage path'
-  fi
+  setup_machine_storage_path "$stack_env_name" "$stack_name" || fatal 'unable to setup up machine storage path'
 }
 
 start_server() {

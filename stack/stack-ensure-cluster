@@ -250,6 +250,64 @@ ensure_services() {
   done
 }
 
+get_service_spec() {
+  local name="$1"
+  docker service inspect "$name" | jq --compact-output -r '.[0].Spec' 2> /dev/null
+}
+
+has_constraint() {
+  local name="$1"
+  local expected_constraint="$2"
+  local constraints="$(get_service_spec "$name" | jq --compact-output -r '.TaskTemplate.Placement.Constraints[]')"
+  local addConstraint='true'
+  for constraint in $constraints; do
+    debug "$constraint == $expected_constraint"
+    if [ "$constraint" == "$expected_constraint" ]; then
+      debug 'constraint exists'
+      addConstraint='false'
+    fi
+  done
+  debug "add constraint $addConstraint"
+  echo "$addConstraint"
+}
+
+has_docker_socket() {
+  local name="$1"
+  local mounts="$(get_service_spec "$name" | jq --compact-output -r '.TaskTemplate.ContainerSpec.Mounts[]')"
+  local addMount='true'
+  local dockerSock='/var/run/docker.sock'
+  for mount in $mounts; do
+    local mountType="$(echo "$mount" | jq --compact-output -r '.Type')"
+    local mountSource="$(echo "$mount" | jq --compact-output -r '.Source')"
+    local mountTarget="$(echo "$mount" | jq --compact-output -r '.Target')"
+    debug "got mount $mount"
+    if [ "$mountType" != "bind" ]; then
+      continue
+    fi
+    if [ "$mountSource" != "$dockerSock" ]; then
+      continue
+    fi
+    if [ "$mountTarget" != "$dockerSock" ]; then
+      continue
+    fi
+    addMount='false'
+  done
+  debug "add mount $addMount"
+  echo "$addMount"
+}
+
+has_same_replicas() {
+  local name="$1"
+  local expected_count="$2"
+  local count="$(get_service_spec "$name" | jq -r '.Mode.Replicated.Replicas')"
+  local hasSame='false'
+  if [ "$count" == "$expected_count" ]; then
+    hasSame='true'
+  fi
+  debug "has same replicas $hasSame"
+  echo "$hasSame"
+}
+
 get_service_command() {
   local command="$1"
   local service="$2"
@@ -277,16 +335,14 @@ get_service_command() {
   local runOptions="$(echo "$service" | jq --compact-output -r '.docker.runOptions[]' 2>/dev/null)"
   local withRegistryAuth="$(echo "$service" | jq -r '.docker.withRegistryAuth')"
   local labelFlag='--label'
-  local envFlag='--env'
   local mountFlag='--mount'
-  local constraintFlag='--constraint'
   local publishFlag='--publish'
+  local constraintFlag='--constraint'
   if [ "$command" == 'update' ]; then
     labelFlag='--label-add'
-    envFlag='--env-add'
     mountFlag='--mount-add'
-    constraintFlag='--constraint-add'
     publishFlag='--publish-add'
+    constraintFlag='--constraint-add'
   fi
   if [ "$network" == "null" ]; then
     network="traefik"
@@ -295,7 +351,9 @@ get_service_command() {
     mode="replicated"
   fi
   if [ "$mode" == "replicated" ]; then
-    opt_replicas="--replicas $count"
+    if [ "$(has_same_replicas "$name" "$count")" == 'false' ]; then 
+      opt_replicas="--replicas $count"
+    fi
   fi
   opt_mode="--mode $mode"
   if [ "$image" == "null" ]; then
@@ -316,10 +374,14 @@ get_service_command() {
     opt_with_registry_auth="--with-registry-auth"
   fi
   if [ "$dockerSock" == "true" ]; then
-    opt_docker_sock="$mountFlag type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock"
+    if [ "$(has_docker_socket "$name")" == 'true' ]; then
+      opt_docker_sock="$mountFlag type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock"
+    fi
   fi
   if [ "$role" != "null" ]; then
-    opt_role="$constraintFlag node.role==$role"
+    if [ "$(has_constraint "$name" "node.role==$role")" == 'true' ]; then
+      opt_role="$constraintFlag node.role==$role"
+    fi
   fi
   if [ "$traefikHost" != "null" ]; then
     local frontendRule="Host:$traefikHost"
@@ -353,7 +415,6 @@ get_service_command() {
       $opt_with_registry_auth \
       --image "$image" \
       "$name"
-    
   elif [ "$command" == "create" ]; then
     debug 'creating service'
     echo docker service create \
