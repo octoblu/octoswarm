@@ -113,7 +113,6 @@ is_stack_empty() {
   local stack_name="$(get_config_val '.stackName')"
   local swarm_env_dir="$HOME/Projects/Octoblu/swarm-$stack_env_name"
   local stack_env_dir="$swarm_env_dir/stacks/$stack_name/machine-template"
-  debug "stack_env_dir $stack_env_dir"
   if [ -d "$stack_env_dir" ]; then
     return 0
   fi
@@ -308,9 +307,18 @@ has_same_replicas() {
   echo "$hasSame"
 }
 
+ensure_network() {
+  local name="$1"
+  docker network inspect "$name" &> /dev/null
+  if [ "$?" != "0" ]; then
+    debug "creating network $name"
+    docker network create --driver overlay "$name"
+    sleep 1
+  fi
+}
+
 get_service_command() {
-  local command="$1"
-  local service="$2"
+  local service="$1"
   local opt_beekeeper
   local opt_docker_sock
   local opt_role
@@ -338,7 +346,9 @@ get_service_command() {
   local mountFlag='--mount'
   local publishFlag='--publish'
   local constraintFlag='--constraint'
-  if [ "$command" == 'update' ]; then
+  local isUpdate='false'
+  if [ "$(get_service_spec "$name")" != "null" ]; then
+    isUpdate='true'
     labelFlag='--label-add'
     mountFlag='--mount-add'
     publishFlag='--publish-add'
@@ -390,24 +400,21 @@ get_service_command() {
     fi
     opt_traefik="$labelFlag traefik.frontend.rule=${frontendRule} $labelFlag traefik.port=80 $labelFlag traefik.docker.network=traefik"
   fi
+
   for port in $publish; do
     opt_publish="$opt_publish $publishFlag $port"
   done
+
   for option in $runOptions; do
     opt_run="$opt_run $option"
   done
-  docker network inspect "$network" &> /dev/null
-  if [ "$?" != "0" ]; then
-    debug "creating network $network"
-    docker network create --driver overlay "$network"
-  fi
-  opt_env="$(docker-service-get-env-args "$name")"
-  local run_command
-  if [ "$command" == "update" ]; then
+
+  ensure_network "$network"
+  
+  if [ "$isUpdate" == "true" ]; then
     debug 'updating service'
     echo docker service update \
       $opt_replicas \
-      $opt_publish \
       $opt_docker_sock \
       $opt_role \
       $opt_traefik \
@@ -415,8 +422,9 @@ get_service_command() {
       $opt_with_registry_auth \
       --image "$image" \
       "$name"
-  elif [ "$command" == "create" ]; then
+  else
     debug 'creating service'
+    opt_env="$(docker-service-get-env-args "$name")"
     echo docker service create \
       --name "$name" \
       --network "$network" \
@@ -431,34 +439,23 @@ get_service_command() {
       $opt_env \
       "$image" \
         $opt_run
-  else
-    fatal 'Service can only be updated, or created'
   fi
 }
 
 run_service_command() {
   local cmd="$@"
-  echo "We are about to run:"
-  echo "   $cmd"
+  echo "Do you want to run the following command?"
+  echo "  $cmd"
   say_yes || return 0
-  $cmd
+  debug 'service command' `$cmd 2>&1`
 }
 
 ensure_service() {
   local service="$1"
   local name="$(echo "$service" | jq -r '.name')"
   local count="$(echo "$service" | jq -r '.count')"
-  debug "ensure service $name - $count - $skip_env_add"
-  service_exists "$name"
-  if [ "$?" == "0" ]; then
-    debug 'service update'
-    local command="$(get_service_command 'update' "$service")"
-    run_service_command $command
-  else
-    debug 'create service'
-    local command="$(get_service_command 'create' "$service")"
-    run_service_command $command
-  fi
+  local command="$(get_service_command "$service")"
+  run_service_command $command
   return $?
 }
 
