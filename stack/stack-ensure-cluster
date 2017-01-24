@@ -254,32 +254,33 @@ get_service_spec() {
   docker service inspect "$name" | jq --compact-output -r '.[0].Spec' 2> /dev/null
 }
 
-has_constraint() {
+has_role() {
   local name="$1"
-  local expected_constraint="$2"
-  local constraints="$(get_service_spec "$name" | jq --compact-output -r '.TaskTemplate.Placement.Constraints[]')"
-  local addConstraint='true'
+  local role="$2"
+  local constraints=$(get_service_spec "$name" | jq --compact-output --raw-output '.TaskTemplate.Placement.Constraints[]')
+  local hasRole='false'
   for constraint in $constraints; do
-    debug "$constraint == $expected_constraint"
-    if [ "$constraint" == "$expected_constraint" ]; then
+    debug "constraint '$constraint'"
+    if [[ "$constraint" == *'node.role'* ]]; then
       debug 'constraint exists'
-      addConstraint='false'
+      hasRole='true'
+      break;
     fi
   done
-  debug "add constraint $addConstraint"
-  echo "$addConstraint"
+  debug "has role $hasRole"
+  echo "$hasRole"
 }
 
 has_docker_socket() {
   local name="$1"
-  local mounts="$(get_service_spec "$name" | jq --compact-output -r '.TaskTemplate.ContainerSpec.Mounts[]')"
-  local addMount='true'
+  local mounts=( $(get_service_spec "$name" | jq --compact-output -r '.TaskTemplate.ContainerSpec.Mounts[]') )
+  local hasDockerSocket='false'
   local dockerSock='/var/run/docker.sock'
   for mount in $mounts; do
+    debug 'mount' $mount
     local mountType="$(echo "$mount" | jq --compact-output -r '.Type')"
     local mountSource="$(echo "$mount" | jq --compact-output -r '.Source')"
     local mountTarget="$(echo "$mount" | jq --compact-output -r '.Target')"
-    debug "got mount $mount"
     if [ "$mountType" != "bind" ]; then
       continue
     fi
@@ -289,22 +290,33 @@ has_docker_socket() {
     if [ "$mountTarget" != "$dockerSock" ]; then
       continue
     fi
-    addMount='false'
+    hasDockerSocket='true'
+    break;
   done
-  debug "add mount $addMount"
-  echo "$addMount"
+  debug "has docker socket $hasDockerSocket"
+  echo "$hasDockerSocket"
+}
+
+has_same_docker_image() {
+  local name="$1"
+  local expected_image="$2"
+  local image="$(get_service_spec "$name" | jq -r '.TaskTemplate.ContainerSpec.Image')"
+  if [ "$image" == "$expected_image" ]; then
+    echo 'true'
+  else
+    echo 'false'
+  fi
 }
 
 has_same_replicas() {
   local name="$1"
   local expected_count="$2"
   local count="$(get_service_spec "$name" | jq -r '.Mode.Replicated.Replicas')"
-  local hasSame='false'
   if [ "$count" == "$expected_count" ]; then
-    hasSame='true'
+    echo 'true'
+  else
+    echo 'false'
   fi
-  debug "has same replicas $hasSame"
-  echo "$hasSame"
 }
 
 ensure_network() {
@@ -384,12 +396,12 @@ get_service_command() {
     opt_with_registry_auth="--with-registry-auth"
   fi
   if [ "$dockerSock" == "true" ]; then
-    if [ "$(has_docker_socket "$name")" == 'true' ]; then
+    if [ "$(has_docker_socket "$name")" != 'true' ]; then
       opt_docker_sock="$mountFlag type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock"
     fi
   fi
   if [ "$role" != "null" ]; then
-    if [ "$(has_constraint "$name" "node.role==$role")" == 'true' ]; then
+    if [ "$(has_role "$name" "$role")" != 'true' ]; then
       opt_role="$constraintFlag node.role==$role"
     fi
   fi
@@ -413,6 +425,10 @@ get_service_command() {
   
   if [ "$isUpdate" == "true" ]; then
     debug 'updating service'
+    local opt_image
+    if [ "$(has_same_docker_image "$name" "$image")" != 'true' ]; then
+      opt_image="--image $image"
+    fi
     echo docker service update \
       $opt_replicas \
       $opt_docker_sock \
@@ -420,7 +436,7 @@ get_service_command() {
       $opt_traefik \
       $opt_beekeeper \
       $opt_with_registry_auth \
-      --image "$image" \
+      $opt_image \
       "$name"
   else
     debug 'creating service'
