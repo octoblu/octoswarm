@@ -121,6 +121,11 @@ main() {
 
   remove_machine_config_files "$stack_path"
   remove_machine_template_config_files "$stack_path"
+  echo "The machine files and templates have been removed from this stack."
+  echo "The old servers, load balancers, DNS records have not been touched, terminated, or removed."
+  echo "Now just close octoswarm, and run 'stack ensure-cluster' inside of the folder with the cluster.json."
+  echo "Once the new cluster is up and running, log into aws console and remove the old servers from the load balancers."
+  echo "Once you confirm that the new cluster has successfully replaced the old cluster, terminate the old servers."
 }
 
 main "$@"
