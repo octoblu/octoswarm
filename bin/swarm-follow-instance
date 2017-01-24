@@ -95,7 +95,7 @@ get_docker_machine_name() {
 get_docker_container_name() {
   local machine_name="$1"
   local instance_name="$2"
-  local docker_config="$(docker-machine config "$machine_name")"
+  local docker_config="$(docker-machine config "$machine_name" 2> /dev/null)"
 
   docker $docker_config ps \
   | grep "$instance_name" \
@@ -139,10 +139,9 @@ follow_instance() {
   local docker_container_name="$(get_docker_container_name "$machine_name" "$docker_instance_name")"
 
   echo "Following: $service_name.$instance_name ($docker_container_name)"
-  local docker_config="$(docker-machine config "$machine_name")"
+  local docker_config="$(docker-machine config "$machine_name" 2> /dev/null)"
   docker $docker_config logs --follow $additional_args "$docker_container_name" \
   || echo "Error following: $service_name.$instance_name"
-
 }
 
 main() {

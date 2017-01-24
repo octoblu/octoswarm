@@ -1,5 +1,21 @@
 #!/bin/bash
 
+debug() {
+  local debug_key='octoswarm'
+  local cyan='\033[0;36m'
+  local no_color='\033[0;0m'
+  if [ -z "$DEBUG" ]; then
+    return 0
+  fi
+  echo "$debug_key" | grep "$DEBUG"
+  local is_valid_debug="$?"
+  if [ "$debug_key" == '*' -a "$is_valid_debug" != "0" ]; then
+    return 0
+  fi
+  local message="$@"
+  (>&2 echo -e "[${cyan}${debug_key}${no_color}]: $message")
+}
+
 assert_required_tools(){
   if [ "$(which envsubst)" == "" ]; then echo "Missing 'envsubst' utility. 'brew install gettext; brew link gettext --force' to install."
     exit 1
@@ -26,16 +42,40 @@ assert_required_params(){
   exit 1
 }
 
-get_manager_machine_id(){
+get_manager_machine_id_unverified(){
+  local stack_env_name="$1"
+  local stack_name="$2"
+  local dir="$HOME/Projects/Octoblu/swarm-$stack_env_name/stacks/$stack_name/machine/machines"
+  local random_dir="$(find "$dir" -iname "$stack_env_name-$stack_name-manager-*" -maxdepth 1 -mindepth 1 -type d -print0 | gsort --zero-terminated --random-sort | head -1)"
+  echo $(basename "$random_dir")
+}
+
+get_manager_machine_id() {
   local stack_env_name="$1"
   local stack_name="$2"
   if [ ! -d "$HOME/Projects/Octoblu/swarm-$stack_env_name/stacks/$stack_name" ]; then
     return 1
   fi
-  local dir="$HOME/Projects/Octoblu/swarm-$stack_env_name/stacks/$stack_name/machine/machines"
-
-  local random_dir="$(find "$dir" -iname "$stack_env_name-$stack_name-manager-*" -maxdepth 1 -mindepth 1 -type d -print0 | gsort --zero-terminated --random-sort | head -1)"
-  echo $(basename "$random_dir")
+  local n=0
+  local max=3
+  local exit_code=1
+  until [ $n -ge $max ]; do
+    manager_id="$(get_manager_machine_id_unverified "$stack_env_name" "$stack_name")"
+    debug 'validating machine id' "$manager_id"
+    docker-machine status "$manager_id" &> /dev/null
+    if [ "$?" == "0" ]; then
+      debug 'found docker machine on try' "$n"
+      echo "$manager_id"
+      exit_code=0
+      break;
+    fi
+    n=$[$n+1]
+    if [ $n -ge $max ]; then
+      debug 'exceeded max tries for find docker machine'
+    fi
+  done
+  debug 'exit code' "$exit_code"
+  return $exit_code
 }
 
 script_directory(){
@@ -102,10 +142,9 @@ assert_stack_dir() {
   fi
 }
 
-setup_machine_storage_path() {
+get_machine_storage_path() {
   local stack_env_name="$1"
   local stack_name="$2"
-
   local raw_machine_storage_path="$HOME/Projects/Octoblu/swarm-$stack_env_name/stacks/$stack_name/machine-template"
   local machine_storage_path="$HOME/Projects/Octoblu/swarm-$stack_env_name/stacks/$stack_name/machine"
 
@@ -129,7 +168,12 @@ setup_machine_storage_path() {
       chmod 600 "$file"
     done
   popd > /dev/null
+}
 
+setup_machine_storage_path() {
+  local stack_env_name="$1"
+  local stack_name="$2"
+  get_machine_storage_path "$stack_env_name" "$stack_name"
   tmux set-environment -t $session MACHINE_STORAGE_PATH "$machine_storage_path"
 }
 
@@ -171,7 +215,7 @@ create_session() {
 
 has_session() {
   local session="$1"
-  tmux has-session -t "$session"
+  tmux ls 2>&1 | awk '{print $1}' | grep "${session}:"
 }
 
 fatal() {
@@ -260,7 +304,12 @@ main() {
   if [ "$?" != "0" ]; then
     create_session "$session" "$stack_env_name" "$stack_name"
     setup_docker_machine "$session" "$stack_env_name" "$stack_name"
-    setup_session "$session" "$(get_manager_machine_id "$stack_env_name" "$stack_name")"
+    local machine_id="$(get_manager_machine_id "$stack_env_name" "$stack_name")"
+    if [ -z "$machine_id"  ]; then
+      tmux kill-session -t "$session"
+      fatal 'Unable to find a valid machine to attach to'
+    fi
+    setup_session "$session" "$machine_id"
     setup_tab_zero "$session"
     setup_tab_shell "$session"
     select_tab "$session" "1" 2> /dev/null

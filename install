@@ -14,9 +14,6 @@ rm_old_bin() {
   if [ -f "$HOME/.bin/swarm-get-deployment-status" ]; then
     rm ~/.bin/swarm-get-deployment-status
   fi
-   if [ -f "$HOME/.bin/swarm-get-latest-docker-url" ]; then
-    rm ~/.bin/swarm-get-latest-docker-url
-  fi
   if [ -f "$HOME/.bin/swarm-start-service" ]; then
     rm ~/.bin/swarm-start-service
   fi

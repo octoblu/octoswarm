@@ -65,7 +65,7 @@ usage(){
   echo '  -h, --help         print this help text'
   echo '  -v, --version      print the version'
   echo ''
-  echo 'EXAMPLE: swarm-follow-instance slurry-exchange 1'
+  echo 'EXAMPLE: swarm-exec-instance slurry-exchange 1 /bin/bash'
 }
 
 version(){
@@ -93,6 +93,16 @@ get_docker_machine_name() {
 
   get_service_line "$service_name" "$instance_name" \
   | awk '{print $4}'
+}
+
+get_docker_container_name() {
+  local machine_name="$1"
+  local instance_name="$2"
+  local docker_config="$(docker-machine config "$machine_name" 2> /dev/null)"
+
+  docker $docker_config ps \
+  | grep "$instance_name" \
+  | awk '{print $1}'
 }
 
 get_docker_instance_name() {
@@ -123,19 +133,16 @@ get_docker_instance_name_suffix() {
 follow_instance() {
   local service_name="$1"
   local instance_name="$2"
-  local cmd="$3"
+  local cmd=$3
 
   local machine_name="$(get_docker_machine_name $service_name $instance_name)"
   assert_machine_name "$machine_name" "$service_name" "$instance_name"
-
   local docker_instance_name="$(get_docker_instance_name $service_name $instance_name)"
-  local docker_config="$(docker-machine config $machine_name)"
+  local docker_container_name="$(get_docker_container_name "$machine_name" "$docker_instance_name")"
+  local docker_config="$(docker-machine config $machine_name 2> /dev/null)"
 
-  echo "Following $docker_instance_name..."
-  docker $docker_config exec -it "$docker_instance_name" $3
-
-  echo "following: $service_name.$instance_name"
-
+  echo "Executing $cmd on $docker_container_name..."
+  docker $docker_config exec -it "$docker_container_name" $cmd
 }
 
 main() {
