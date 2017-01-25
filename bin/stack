@@ -101,6 +101,12 @@ ensure_correct_deps() {
     echo "Make sure Docker for Mac (Stable) is installed and up-to-date with version 1.13"
     fatal 'docker must be version 1.13.x'
   fi
+  brew info openssl &> /dev/null
+  if [ "$?" != "0" ]; then
+    echo "Docker is not compatible with the native version of openssl"
+    echo "Just to be safe, please run 'brew install openssl' - don't worry about linking it (it is keg-only)"
+    fatal 'openssl must be installed via brew'
+  fi
   return 0
 }
 
