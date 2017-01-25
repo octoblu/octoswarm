@@ -251,13 +251,14 @@ ensure_services() {
 
 get_service_spec() {
   local name="$1"
-  docker service inspect "$name" | jq --compact-output -r '.[0].Spec' 2> /dev/null
+  local key="$2"
+  docker service inspect "$name" 2> /dev/null | jq --compact-output --raw-output ".[0].Spec${key}" 2> /dev/null
 }
 
 has_role() {
   local name="$1"
   local role="$2"
-  local constraints=$(get_service_spec "$name" | jq --compact-output --raw-output '.TaskTemplate.Placement.Constraints[]')
+  local constraints=$(get_service_spec "$name" '.TaskTemplate.Placement.Constraints[]')
   local hasRole='false'
   for constraint in $constraints; do
     debug "constraint '$constraint'"
@@ -273,7 +274,7 @@ has_role() {
 
 has_docker_socket() {
   local name="$1"
-  local mounts=( $(get_service_spec "$name" | jq --compact-output -r '.TaskTemplate.ContainerSpec.Mounts[]') )
+  local mounts=( $(get_service_spec "$name" '.TaskTemplate.ContainerSpec.Mounts[]') )
   local hasDockerSocket='false'
   local dockerSock='/var/run/docker.sock'
   for mount in $mounts; do
@@ -300,7 +301,7 @@ has_docker_socket() {
 has_same_docker_image() {
   local name="$1"
   local expected_image="$2"
-  local image="$(get_service_spec "$name" | jq -r '.TaskTemplate.ContainerSpec.Image')"
+  local image="$(get_service_spec "$name" '.TaskTemplate.ContainerSpec.Image')"
   if [ "$image" == "$expected_image" ]; then
     echo 'true'
   else
@@ -311,7 +312,7 @@ has_same_docker_image() {
 has_same_replicas() {
   local name="$1"
   local expected_count="$2"
-  local count="$(get_service_spec "$name" | jq -r '.Mode.Replicated.Replicas')"
+  local count="$(get_service_spec "$name" '.Mode.Replicated.Replicas')"
   if [ "$count" == "$expected_count" ]; then
     echo 'true'
   else
