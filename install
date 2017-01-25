@@ -10,6 +10,10 @@ link_bin() {
   ln -nsf $(script_directory)/bin/* ~/.bin
 }
 
+write_octoswarm_version() {
+  cat $(script_directory)/VERSION > ~/.octoswarm-version
+}
+
 rm_old_bin() {
   if [ -f "$HOME/.bin/swarm-get-deployment-status" ]; then
     rm ~/.bin/swarm-get-deployment-status
@@ -82,7 +86,7 @@ usage(){
 }
 
 version(){
-  local directory="$(script_directory)/.."
+  local directory="$(script_directory)"
 
   if [ -f "$directory/VERSION" ]; then
     cat "$directory/VERSION"
@@ -117,7 +121,8 @@ main() {
 
   link_bin
   rm_old_bin
-  echo "INSTALLED!"
+  write_octoswarm_version
+  echo "* octoswarm installed (v$(version)) - you're all up to date now!"
 }
 
 main "$@"

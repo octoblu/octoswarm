@@ -261,6 +261,22 @@ version(){
   fi
 }
 
+octoswarm_version() {
+  local version_file="$HOME/.octoswarm-version"
+
+  if [ -f "$version_file" ]; then
+    cat "$version_file"
+  fi
+}
+
+update_octoswarm() {
+  if [ "$(octoswarm_version)" != "$(version)" ]; then
+    pushd "$HOME/Projects/Octoblu/octoswarm" &> /dev/null
+      ./install
+    popd &> /dev/null
+  fi
+}
+
 main() {
   local stack_env_name
   local stack_name
@@ -291,6 +307,8 @@ main() {
     esac
     shift
   done
+
+  update_octoswarm
 
   assert_required_params "$stack_env_name" "$stack_name"
   assert_required_tools

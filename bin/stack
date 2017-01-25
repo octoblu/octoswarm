@@ -60,6 +60,22 @@ version(){
   fi
 }
 
+octoswarm_version() {
+  local version_file="$HOME/.octoswarm-version"
+
+  if [ -f "$version_file" ]; then
+    cat "$version_file"
+  fi
+}
+
+update_octoswarm() {
+  if [ "$(octoswarm_version)" != "$(version)" ]; then
+    pushd "$HOME/Projects/Octoblu/octoswarm" &> /dev/null
+      ./install
+    popd &> /dev/null
+  fi
+}
+
 run_script() {
   local script="$1"; shift
   "$script" "$@"
@@ -131,6 +147,8 @@ main() {
       exit 0
       ;;
   esac
+
+  update_octoswarm
 
   local swarm_env_dir="$SWARM_ENV_DIR"
   local stack_bin_dir="$STACK_BIN_DIR"
