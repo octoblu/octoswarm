@@ -47,10 +47,11 @@ usage(){
   echo '  DEBUG              print debug output'
   echo '  SWARM_ENV_DIR      swarn env dir. defaults to $HOME/Projects/Octoblu/swarm-$STACK_ENV_NAME'
   echo '  STACK_BIN_DIR      stack bin dir. defaults to $SWARM_ENV_DIR/bin'
+  echo '  OVERRIDE_SAY_YES   override "y" on any confirmation prompt'
 }
 
 version(){
-  local directory="$(script_directory)"
+  local directory="$(script_directory)/.."
 
   if [ -f "$directory/VERSION" ]; then
     cat "$directory/VERSION"
@@ -83,6 +84,12 @@ get_commands() {
 
 assert_stack_script() {
   local script_name="$1"
+  case "$script_name" in
+    ls | list)
+      get_commands
+      exit 0
+      ;;
+  esac
   if [ ! -f "$STACK_BIN_DIR/stack-$script_name" ]; then
     echo "The stack script does not exist, stack-$script_name"
     echo ''
@@ -114,6 +121,17 @@ main() {
   ensure_correct_deps
   local script_name="$1"
 
+  case "$script_name" in
+    -h | --help | help)
+      usage
+      exit 0
+      ;;
+    -v | --version | version)
+      version
+      exit 0
+      ;;
+  esac
+
   local swarm_env_dir="$SWARM_ENV_DIR"
   local stack_bin_dir="$STACK_BIN_DIR"
 
@@ -143,29 +161,6 @@ main() {
     run_script "$stack_bin_dir/stack-$script_name" "$@"
     exit $?
   fi
-
-  while [ "$1" != "" ]; do
-    local param="$1"
-    local value="$2"
-    case "$param" in
-      -h | --help)
-        usage
-        exit 0
-        ;;
-      -v | --version)
-        version
-        exit 0
-        ;;
-      *)
-        if [ "${param::1}" == '-' ]; then
-          echo "ERROR: unknown parameter \"$param\""
-          usage
-          exit 1
-        fi
-        ;;
-    esac
-    shift
-  done
 }
 
 main "$@"

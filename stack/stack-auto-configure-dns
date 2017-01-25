@@ -79,7 +79,7 @@ usage(){
 }
 
 version(){
-  local directory="$(script_directory)"
+  local directory="$(script_directory)/.."
 
   if [ -f "$directory/VERSION" ]; then
     cat "$directory/VERSION"
@@ -101,7 +101,7 @@ generate_change_batch(){
   local domain="$2"
   local load_balancer_dns="$3"
   local load_balancer_target_zone="$4"
-  local directory="$(script_directory)"
+  local directory="$(script_directory)/.."
 
   env \
     CONFIG_PATH="$config_path" \

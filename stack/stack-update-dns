@@ -97,7 +97,7 @@ usage(){
 }
 
 version(){
-  local directory="$(script_directory)"
+  local directory="$(script_directory)/.."
 
   if [ -f "$directory/VERSION" ]; then
     cat "$directory/VERSION"
@@ -156,13 +156,13 @@ main() {
 
   local file_path="$(mktemp)"
 
-  local directory="$(script_directory)"
+  local script_dir="$(script_directory)"
 
   env OUTPUT_PATH="$file_path" \
     DOMAIN="$subdomain.$domain" \
     ZONE_ID="$load_balancer_target_zone" \
     ALIAS="$load_balancer_dns" \
-    $directory/stack-write-route-53-batch-file
+    $script_dir/stack-write-route-53-batch-file
 
   local route53_hosted_zone=$(get_route53_hosted_zone "$domain")
   if [ -z "$route53_hosted_zone" -o "$route53_hosted_zone" == "null" ]; then

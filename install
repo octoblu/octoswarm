@@ -17,6 +17,15 @@ rm_old_bin() {
   if [ -f "$HOME/.bin/swarm-start-service" ]; then
     rm ~/.bin/swarm-start-service
   fi
+  if [ -f "$HOME/.bin/docker-build-project" ]; then
+    rm ~/.bin/docker-build-project
+  fi
+  if [ -f "$HOME/.bin/swarm-create-machine" ]; then
+    rm ~/.bin/swarm-create-machine
+  fi
+  if [ -f "$HOME/.bin/swarm-initialize" ]; then
+    rm ~/.bin/swarm-initialize
+  fi
   if [ -f "$HOME/.bin/swarm-init-service" ]; then
     rm ~/.bin/swarm-init-service
   fi
@@ -73,7 +82,7 @@ usage(){
 }
 
 version(){
-  local directory="$(script_directory)"
+  local directory="$(script_directory)/.."
 
   if [ -f "$directory/VERSION" ]; then
     cat "$directory/VERSION"

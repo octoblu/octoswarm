@@ -36,7 +36,7 @@ usage(){
 }
 
 version(){
-  local directory="$(script_directory)"
+  local directory="$(script_directory)/.."
 
   if [ -f "$directory/VERSION" ]; then
     cat "$directory/VERSION"
@@ -138,6 +138,26 @@ unset_stack_env() {
   eval $(docker-machine env --unset)
 }
 
+get_interface() {
+  local machine_id="$1"
+  local ifconf="$(docker-machine ssh "$machine_id" ifconfig)"
+  if [ "$?" != "0" ]; then
+    fatal 'Unable to ssh into machine'
+    return 1
+  fi
+  echo "$ifconf" | grep eth0 &> /dev/null
+  if [ "$?" == "0" ]; then
+    echo 'eth0'
+    return 0
+  fi
+  echo "$ifconf" | grep ens3 &> /dev/null
+  if [ "$?" == "0" ]; then
+    echo 'ens3'
+    return 0
+  fi
+  return 1
+}
+
 main() {
   local ec2_instance_type="t2.medium"
   local stack_env_name
@@ -201,7 +221,16 @@ main() {
   debug 'sleep for 10 seconds to wait for docker'
   sleep 10
   eval $(docker-machine env --shell=bash "$machine_id")
-  swarm-initialize "$machine_id" || fatal 'unable to initialize swarm'
+
+  local interface="$(get_interface "$machine_id")"
+  if [ "$?" != "0" ]; then
+    fatal "$interface"
+  fi
+
+  docker $(docker-machine config "$machine_id") \
+    swarm init \
+    --advertise-addr "$interface" \
+    --listen-addr "$interface" || fatal 'unable to initialize swarm'
 
   if [ "$skip_elb" != "true" ]; then
     local lb_name="${stack_env_name}-${stack_name}"
