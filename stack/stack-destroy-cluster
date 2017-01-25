@@ -28,8 +28,11 @@ usage(){
   echo 'Arguments:'
   echo '  -h, --help               print this help text'
   echo '  -v, --version            print the version'
+  echo '  -i, --info               print the destroy instructions'
   echo 'Environment:'
   echo '  DEBUG                    print debug output'
+  echo ''
+  info
 }
 
 version(){
@@ -80,6 +83,22 @@ remove_machine_template_config_files() {
   fi
 }
 
+info() {
+  local removed="$1"
+  echo 'Instructions:'
+  echo ''
+  if [ "$removed" == 'true' ]; then
+    echo "The machine files and templates have been removed from this stack."
+  else
+    echo "This command will remove machine files and templates from this stack."
+    echo "The rest are manual steps."
+  fi
+  echo "The old servers, load balancers, DNS records have not been touched, terminated, or removed."
+  echo "Now just close octoswarm, and run 'stack ensure-cluster' inside of the folder with the cluster.json."
+  echo "Once the new cluster is up and running, log into aws console and remove the old servers from the load balancers."
+  echo "Once you confirm that the new cluster has successfully replaced the old cluster, terminate the old servers."
+}
+
 main() {
   local stack_path
   while [ "$1" != "" ]; do
@@ -93,6 +112,10 @@ main() {
         ;;
       -v | --version)
         version
+        exit 0
+        ;;
+      -i | --info)
+        info
         exit 0
         ;;
       *)
@@ -121,11 +144,7 @@ main() {
 
   remove_machine_config_files "$stack_path"
   remove_machine_template_config_files "$stack_path"
-  echo "The machine files and templates have been removed from this stack."
-  echo "The old servers, load balancers, DNS records have not been touched, terminated, or removed."
-  echo "Now just close octoswarm, and run 'stack ensure-cluster' inside of the folder with the cluster.json."
-  echo "Once the new cluster is up and running, log into aws console and remove the old servers from the load balancers."
-  echo "Once you confirm that the new cluster has successfully replaced the old cluster, terminate the old servers."
+  info 'true'
 }
 
 main "$@"
