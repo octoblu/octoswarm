@@ -45,8 +45,14 @@ assert_required_params(){
 get_manager_machine_id_unverified(){
   local stack_env_name="$1"
   local stack_name="$2"
+  local sortcmd="sort"
+
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    sortcmd="gsort"
+  fi
+
   local dir="$HOME/Projects/Octoblu/swarm-$stack_env_name/stacks/$stack_name/machine/machines"
-  local random_dir="$(find "$dir" -iname "$stack_env_name-$stack_name-manager-*" -maxdepth 1 -mindepth 1 -type d -print0 | gsort --zero-terminated --random-sort | head -1)"
+  local random_dir="$(find "$dir" -iname "$stack_env_name-$stack_name-manager-*" -maxdepth 1 -mindepth 1 -type d -print0 | $sortcmd --zero-terminated --random-sort | head -1)"
   echo $(basename "$random_dir")
 }
 
@@ -192,7 +198,7 @@ create_session() {
   local session="$1"
   local stack_env_name="$2"
   local stack_name="$3"
-  
+
   export SWARM_ENV_DIR="$HOME/Projects/Octoblu/swarm-$stack_env_name"
   export STACK_ENV_DIR="$SWARM_ENV_DIR/stacks/$stack_name"
   export STACK_NAME="$stack_env_name-$stack_name"
