@@ -393,6 +393,9 @@ get_service_command() {
   if [ "$beekeeper" == "true" ]; then
     opt_beekeeper="$labelFlag octoblu.beekeeper.update=true"
   fi
+  if [ "$beekeeper" == "false" ]; then
+    opt_beekeeper="$labelFlag octoblu.beekeeper.update=false"
+  fi
   if [ "$withRegistryAuth" == "true" ]; then
     opt_with_registry_auth="--with-registry-auth"
   fi
