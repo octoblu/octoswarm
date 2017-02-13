@@ -7,7 +7,7 @@ fatal() {
 }
 
 link_bin() {
-  ln -nsf $(script_directory)/bin/* ~/.bin
+  ln -nsf $(script_directory)/bin ~/.bin
 }
 
 write_octoswarm_version() {
@@ -119,8 +119,8 @@ main() {
     shift
   done
 
-  link_bin
   rm_old_bin
+  link_bin
   write_octoswarm_version
   echo "* octoswarm installed (v$(version)) - you're all up to date now!"
 }

@@ -374,7 +374,7 @@ get_service_command() {
     mode="replicated"
   fi
   if [ "$mode" == "replicated" ]; then
-    if [ "$(has_same_replicas "$name" "$count")" == 'false' ]; then 
+    if [ "$(has_same_replicas "$name" "$count")" == 'false' ]; then
       opt_replicas="--replicas $count"
     fi
   fi
@@ -423,7 +423,7 @@ get_service_command() {
   done
 
   ensure_network "$network"
-  
+
   if [ "$isUpdate" == "true" ]; then
     debug 'updating service'
     local opt_image
