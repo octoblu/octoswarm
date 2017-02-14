@@ -9,17 +9,18 @@ set_ulimit() {
 
 say_yes() {
   local response
-  if [ "$OVERRIDE_SAY_YES" == 'true' ]; then
-    echo "You've choosen to just always say yes. So we are just gonna do it."
-    return 0
+  if [ "$OVERRIDE_SAY_YES_OVERRIDE" == 'true' ]; then
+    echo "You've choosen to not just always say yes. So we are not just gonna do it."
+    read -s -p "press 'y' if you want to continue."$'\n' -n 1 response
+    if [[ "$response" == 'y' ]]; then
+      echo 'Good choice...'
+      return 0
+    fi
+    echo 'Fine. Skipping...'
+    return 1
   fi
-  read -s -p "press 'y' if you want to continue."$'\n' -n 1 response
-  if [[ "$response" == 'y' ]]; then
-    echo 'Good choice...'
-    return 0
-  fi
-  echo 'Fine. Skipping...'
-  return 1
+
+  return 0
 }
 
 debug_core() {
