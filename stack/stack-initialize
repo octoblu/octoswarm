@@ -120,10 +120,6 @@ set_stack_env() {
   export STACK_NAME="$stack_env_name-$stack_name"
   export SWARM_NAME="$stack_env_name"
 
-  export LDFLAGS="-L/usr/local/opt/openssl/lib"
-  export CPPFLAGS="-I/usr/local/opt/openssl/include"
-  export PKG_CONFIG_PATH="/usr/local/opt/openssl/lib/pkgconfig"
-
   export RAW_MACHINE_STORAGE_PATH="$raw_machine_storage_path"
   export MACHINE_STORAGE_PATH="$machine_storage_path"
 }

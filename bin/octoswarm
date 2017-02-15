@@ -204,19 +204,12 @@ create_session() {
   export STACK_NAME="$stack_env_name-$stack_name"
   export SWARM_NAME="$stack_env_name"
 
-  export LDFLAGS="-L/usr/local/opt/openssl/lib"
-  export CPPFLAGS="-I/usr/local/opt/openssl/include"
-  export PKG_CONFIG_PATH="/usr/local/opt/openssl/lib/pkgconfig"
-
   cd "$STACK_ENV_DIR"
   tmux new-session -s "$session" -c "$STACK_ENV_DIR" -n √ø -d
   tmux set-environment -t $session SWARM_ENV_DIR $SWARM_ENV_DIR
   tmux set-environment -t $session STACK_ENV_DIR $STACK_ENV_DIR
   tmux set-environment -t $session STACK_NAME $STACK_NAME
   tmux set-environment -t $session SWARM_NAME $SWARM_NAME
-  tmux set-environment -t $session PKG_CONFIG_PATH $PKG_CONFIG_PATH
-  tmux set-environment -t $session CPPFLAGS $CPPFLAGS
-  tmux set-environment -t $session LDFLAGS $LDFLAGS
 }
 
 has_session() {

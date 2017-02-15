@@ -10,6 +10,15 @@ assert_machine_name(){
     exit 1
   fi
 }
+
+assert_docker_container_name() {
+  local docker_container_name="$1"
+  if [ -z "$docker_container_name" ]; then
+    return 1
+  fi
+  return 0
+}
+
 assert_required_params(){
   local service_name="$1"
   local instance_name="$2"
@@ -130,19 +139,37 @@ get_docker_instance_name_suffix() {
   | awk '{print $1}'
 }
 
-follow_instance() {
+exec_instance() {
   local service_name="$1"
   local instance_name="$2"
   local cmd=$3
 
   local machine_name="$(get_docker_machine_name $service_name $instance_name)"
-  assert_machine_name "$machine_name" "$service_name" "$instance_name"
+  assert_machine_name "$machine_name" "$service_name" "$instance_name" || return 1
+
   local docker_instance_name="$(get_docker_instance_name $service_name $instance_name)"
   local docker_container_name="$(get_docker_container_name "$machine_name" "$docker_instance_name")"
+
+  assert_docker_container_name "$docker_container_name" || return 1
+
   local docker_config="$(docker-machine config $machine_name 2> /dev/null)"
 
   echo "Executing $cmd on $docker_container_name..."
   docker $docker_config exec -it "$docker_container_name" $cmd
+}
+
+try_exec_instance() {
+  local service_name="$1"
+  local instance_name="$2"
+  local cmd="$3"
+  local attempt=0
+	while [ $attempt -lt 10 ]; do
+		exec_instance "$service_name" "$instance_name" "$cmd" && return 0
+		echo "$attempt/10 of exec instance, retrying"
+		let "attempt+=1"
+	done
+	echo 'failed to exec instance'
+	exit 1
 }
 
 main() {
@@ -181,7 +208,7 @@ main() {
   done
 
   assert_required_params "$service_name" "$instance_name" "$cmd"
-  follow_instance "$service_name" "$instance_name" "$cmd"
+  exec_instance "$service_name" "$instance_name" "$cmd"
 }
 
 main "$@"

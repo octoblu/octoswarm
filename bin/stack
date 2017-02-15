@@ -47,7 +47,7 @@ usage(){
   echo '  DEBUG              print debug output'
   echo '  SWARM_ENV_DIR      swarn env dir. defaults to $HOME/Projects/Octoblu/swarm-$STACK_ENV_NAME'
   echo '  STACK_BIN_DIR      stack bin dir. defaults to $SWARM_ENV_DIR/bin'
-  echo '  OVERRIDE_SAY_YES   override "y" on any confirmation prompt'
+  echo '  OVERRIDE_SAY_YES_OVERRIDE  override "y" on any confirmation prompt'
 }
 
 version(){
