@@ -133,7 +133,7 @@ main() {
   done
 
   if [ ! -d "$stack_path" ]; then
-    stack_path="$STACK_ENV_DIR"
+    stack_path="$STACK_DIR"
   fi
 
   if [ ! -d "$stack_path" ]; then

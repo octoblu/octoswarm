@@ -141,14 +141,14 @@ main() {
     --amazonec2-security-group "swarm-prod" \
     --amazonec2-security-group "swarm-prod-ssh" || fatal 'unable to create machine'
 
-  mkdir -p $STACK_ENV_DIR/machine/machines
-  mkdir -p $STACK_ENV_DIR/machine-template/machines
-  mkdir -p $STACK_ENV_DIR/machine-template/certs
+  mkdir -p $STACK_DIR/machine/machines
+  mkdir -p $STACK_DIR/machine-template/machines
+  mkdir -p $STACK_DIR/machine-template/certs
   copy_to_template "$machine_id" \
-    $STACK_ENV_DIR/machine/machines \
-    $STACK_ENV_DIR/machine-template/machines || fatal 'unable to copy machine templates'
+    $STACK_DIR/machine/machines \
+    $STACK_DIR/machine-template/machines || fatal 'unable to copy machine templates'
 
-  cp -rfp $STACK_ENV_DIR/machine/certs/* $STACK_ENV_DIR/machine-template/certs/
+  cp -rfp $STACK_DIR/machine/certs/* $STACK_DIR/machine-template/certs/
 }
 
 main "$@"

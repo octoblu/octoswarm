@@ -60,8 +60,8 @@ get_nodes_by_role_unverified() {
 
 get_nodes_by_role() {
   local role="$1"
-  if [ -z "$STACK_ENV_DIR" ]; then
-    debug 'cannot get nodes because it does not have STACK_ENV_DIR set'
+  if [ -z "$STACK_DIR" ]; then
+    debug 'cannot get nodes because it does not have STACK_DIR set'
     return 0
   fi
   for node_name in $(get_nodes_by_role_unverified "$role"); do
@@ -97,8 +97,8 @@ get_manager_id_unverified() {
 }
 
 get_manager_id() {
-  if [ -z "$STACK_ENV_DIR" ]; then
-    debug 'cannot get manager id because it does not have STACK_ENV_DIR set' 
+  if [ -z "$STACK_DIR" ]; then
+    debug 'cannot get manager id because it does not have STACK_DIR set' 
     return 0
   fi
   local manager_id="$(get_manager_id_unverified)"

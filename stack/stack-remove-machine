@@ -82,7 +82,7 @@ remove_docker_machine() {
 remove_config() {
   local folder="$1"
   local machine_id="$2"
-  local config_folder="$STACK_ENV_DIR/$folder/machines/$machine_id"
+  local config_folder="$STACK_DIR/$folder/machines/$machine_id"
   if [ -d "$config_folder" ]; then
     debug "removing $config_folder"
     rm -rf "$config_folder"

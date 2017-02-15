@@ -22,7 +22,7 @@ debug() {
 }
 
 usage(){
-  echo 'USAGE: stack-initialize <stack-env-name> <stack-name>'
+  echo 'USAGE: stack-initialize'
   echo 'Description: initialize a cluster'
   echo ''
   echo 'Arguments:'
@@ -79,59 +79,9 @@ assert_required_params(){
 }
 
 assert_stack_empty() {
-  local stack_env_name="$1"
-  local stack_name="$2"
-  local swarm_env_dir="$HOME/Projects/Octoblu/swarm-$stack_env_name"
-  local stack_env_dir="$swarm_env_dir/stacks/$stack_name/machine-template"
-  debug "stack_env_dir $stack_env_dir"
-  if [ -d "$stack_env_dir" ]; then
-    fatal 'Stack folder already exists!'
+  if [ -d "$RAW_MACHINE_STORAGE_PATH" ]; then
+    fatal 'Stack already has machines'
   fi
-}
-
-set_stack_env() {
-  local stack_env_name="$1"
-  local stack_name="$2"
-  local swarm_env_dir="$HOME/Projects/Octoblu/swarm-$stack_env_name"
-  local stack_env_dir="$swarm_env_dir/stacks/$stack_name"
-
-  if [ ! -d "$swarm_env_dir" ]; then
-    fatal "$swarm_env_dir does not exist"
-  fi
-
-  local raw_machine_storage_path="$stack_env_dir/machine-template"
-  local machine_storage_path="$stack_env_dir/machine"
-
-  rm -rf $machine_storage_path
-  mkdir -p $machine_storage_path
-  cp -rfp $raw_machine_storage_path/* $machine_storage_path 2> /dev/null
-
-  pushd "$machine_storage_path" > /dev/null
-    for file in `find . -iname '*.json'`; do
-      cat "$file" | envsubst > "$file.tmp" && mv "$file.tmp" "$file"
-    done
-    for file in `find . -iname 'id_rsa'`; do
-      chmod 600 "$file"
-    done
-  popd > /dev/null
-
-  export SWARM_ENV_DIR="$swarm_env_dir"
-  export STACK_ENV_DIR="$stack_env_dir"
-  export STACK_NAME="$stack_env_name-$stack_name"
-  export SWARM_NAME="$stack_env_name"
-
-  export RAW_MACHINE_STORAGE_PATH="$raw_machine_storage_path"
-  export MACHINE_STORAGE_PATH="$machine_storage_path"
-}
-
-unset_stack_env() {
-  unset SWARM_ENV_DIR
-  unset STACK_ENV_DIR
-  unset STACK_NAME
-  unset SWARM_NAME
-  unset RAW_MACHINE_STORAGE_PATH
-  unset MACHINE_STORAGE_PATH
-  eval $(docker-machine env --unset)
 }
 
 get_interface() {
@@ -156,8 +106,6 @@ get_interface() {
 
 main() {
   local ec2_instance_type="t2.medium"
-  local stack_env_name
-  local stack_name
   local skip_elb
   while [ "$1" != "" ]; do
     local param="$1"
@@ -185,31 +133,20 @@ main() {
           usage
           exit 1
         fi
-        if [ -z "$stack_env_name" ]; then
-          stack_env_name="$param"
-        elif [ -z "$stack_name" ]; then
-          stack_name="$param"
-        fi
         ;;
     esac
     shift
   done
   debug "ec2_instance_type $ec2_instance_type"
-  debug "stack_env_name $stack_env_name"
-  debug "stack_name $stack_name"
 
-  assert_required_params "$stack_env_name" "$stack_name"
-  assert_stack_empty "$stack_env_dir" "$stack_name"
-  set_stack_env "$stack_env_name" "$stack_name"
+  assert_stack_empty
 
   local machine_id="$(swarm-generate-machine-id manager)"
   debug "machine_id $machine_id"
 
-  local script_dir="$(script_directory)"
-
   assert_required_env
 
-  "$script_dir/stack-create-machine" \
+  stack create-machine \
     --ec2-instance-type "$ec2_instance_type" \
     "$machine_id" || fatal 'unable to create machine'
 
@@ -232,13 +169,10 @@ main() {
     local lb_name="${stack_env_name}-${stack_name}"
     debug "configuring elb '$lb_name'"
 
-    "$script_dir/stack-create-elb" "$lb_name" || fatal 'unable to create elb'
+    stack create-elb "$lb_name" || fatal 'unable to create elb'
 
-    "$script_dir/stack-add-to-elb" "$machine_id" "$lb_name" || fatal 'unable to add stack elb'
+    stack add-to-elb "$machine_id" "$lb_name" || fatal 'unable to add stack elb'
   fi
-
-  unset_stack_env
-  octoswarm "$stack_env_name" "$stack_name"
 }
 
 main "$@"

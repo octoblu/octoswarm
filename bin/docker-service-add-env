@@ -1,10 +1,10 @@
 #!/bin/bash
 
 assert_required_params(){
-  local stack_env_dir="$1"
+  local stack_dir="$1"
   local service_name="$2"
 
-  if [ -n "$stack_env_dir" -a -n "$service_name" ]; then
+  if [ -n "$stack_dir" -a -n "$service_name" ]; then
     return 0
   fi
 
@@ -14,8 +14,8 @@ assert_required_params(){
     echo "service_name is required"
   fi
 
-  if [ -z "$stack_env_dir" ]; then
-    echo "STACK_ENV_DIR is empty"
+  if [ -z "$stack_dir" ]; then
+    echo "STACK_DIR is empty"
   fi
 
   exit 1
@@ -66,7 +66,7 @@ usage(){
   echo '  -v, --version      print the version'
   echo 'Environment:'
   echo '  DEBUG              print debug output'
-  echo '  STACK_ENV_DIR      path to stack env directory.'
+  echo '  STACK_DIR      path to stack env directory.'
 }
 
 version(){
@@ -80,11 +80,11 @@ version(){
 }
 
 env_add() {
-  local stack_env_dir="$1"
+  local stack_dir="$1"
   local service_name="$2"
   local folder_name="$3"
 
-  local env_folder="$stack_env_dir/env.d/$folder_name"
+  local env_folder="$STACK_DIR/$folder_name"
   if [ -d "$env_folder" ]; then
     pushd "$env_folder" > /dev/null
     for file in $(ls); do

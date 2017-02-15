@@ -45,8 +45,6 @@ usage(){
   echo '  -v, --version      print the version'
   echo 'Environment:'
   echo '  DEBUG              print debug output'
-  echo '  SWARM_ENV_DIR      swarn env dir. defaults to $HOME/Projects/Octoblu/swarm-$STACK_ENV_NAME'
-  echo '  STACK_BIN_DIR      stack bin dir. defaults to $SWARM_ENV_DIR/bin'
   echo '  OVERRIDE_SAY_YES_OVERRIDE  override "y" on any confirmation prompt'
 }
 
@@ -60,36 +58,9 @@ version(){
   fi
 }
 
-octoswarm_version() {
-  local version_file="$HOME/.octoswarm-version"
-
-  if [ -f "$version_file" ]; then
-    cat "$version_file"
-  fi
-}
-
-update_octoswarm() {
-  if [ "$(octoswarm_version)" != "$(version)" ]; then
-    pushd "$HOME/Projects/Octoblu/octoswarm" &> /dev/null
-      ./install
-    popd &> /dev/null
-  fi
-}
-
 run_script() {
   local script="$1"; shift
   "$script" "$@"
-}
-
-assert_stack_dirs() {
-  if [ ! -d "$SWARM_ENV_DIR" ]; then
-    debug "SWARM_ENV_DIR $SWARM_ENV_DIR"
-    fatal "SWARM_ENV_DIR is not a directory"
-  fi
-  if [ ! -d "$STACK_BIN_DIR" ]; then
-    debug "STACK_BIN_DIR $STACK_BIN_DIR"
-    fatal "STACK_BIN_DIR is not a directory"
-  fi
 }
 
 get_commands() {
@@ -118,25 +89,7 @@ assert_stack_script() {
   return 0
 }
 
-ensure_correct_deps() {
-  if [[ "$OSTYPE" == "darwin"* ]]; then
-    if [[ $(docker --version) != *'1.13'* ]]; then
-      echo "Your docker version (`docker --version`) is likely not compatible, just be safe, and upgrade it"
-      echo "Make sure Docker for Mac (Stable) is installed and up-to-date with version 1.13"
-      fatal 'docker must be version 1.13.x'
-    fi
-    brew info openssl &> /dev/null
-    if [ "$?" != "0" ]; then
-      echo "Docker is not compatible with the native version of openssl"
-      echo "Just to be safe, please run 'brew install openssl' - don't worry about linking it (it is keg-only)"
-      fatal 'openssl must be installed via brew'
-    fi
-  fi
-  return 0
-}
-
 main() {
-  ensure_correct_deps
   local script_name="$1"
 
   case "$script_name" in
@@ -150,35 +103,12 @@ main() {
       ;;
   esac
 
-  update_octoswarm
-
-  local swarm_env_dir="$SWARM_ENV_DIR"
-  local stack_bin_dir="$STACK_BIN_DIR"
-
-  if [ -z "$swarm_env_dir" ]; then
-    IFS='/' read -a segments <<< "$PWD"
-    local swarm_dirname="${segments[5]}"
-    if [[ $swarm_dirname != *'swarm-'* ]]; then
-      swarm_dirname='swarm-prod'
-    else
-      (>&2 echo "NOTICE: we dynamically figured out you are running ${swarm_dirname}")
-    fi
-    swarm_env_dir="${HOME}/Projects/Octoblu/${swarm_dirname}"
-    export SWARM_ENV_DIR="$swarm_env_dir"
-  fi
-
-  if [ -z "$stack_bin_dir" -a -n "$swarm_env_dir" ]; then
-    stack_bin_dir="$(script_directory)/../stack"
-    export STACK_BIN_DIR="$stack_bin_dir"
-  fi
-
-  assert_stack_dirs "$swarm_env_dir" "$stack_bin_dir"
   assert_stack_script "$script_name"
 
   if [ "$?" == "0" ]; then
     shift
     debug "running script stack-$script_name"
-    run_script "$stack_bin_dir/stack-$script_name" "$@"
+    run_script "$STACK_BIN_DIR/stack-$script_name" "$@"
     exit $?
   fi
 }

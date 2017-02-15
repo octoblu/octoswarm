@@ -87,12 +87,12 @@ main() {
     shift
   done
 
-  if [ ! -d "$SWARM_ENV_DIR/env.d/$service_name" ]; then
+  if [ ! -d "$STACK_ENV_DIR/$service_name" ]; then
     fatal "This service does not have an environment"
   fi
   echo "Copying environment to stack..."
-  mkdir -p "$STACK_ENV_DIR/env.d/$service_name"
-  cp -rfp $SWARM_ENV_DIR/env.d/$service_name/* "$STACK_ENV_DIR/env.d/$service_name" && \
+  mkdir -p "$STACK_ENV_DIR/$service_name"
+  cp -rfp $STACK_ENV_DIR/$service_name/* "$STACK_ENV_DIR/$service_name" && \
     echo "done."
 }
 

@@ -109,11 +109,7 @@ get_config_array() {
 }
 
 is_stack_empty() {
-  local stack_env_name="$(get_config_val '.stackEnvName')"
-  local stack_name="$(get_config_val '.stackName')"
-  local swarm_env_dir="$HOME/Projects/Octoblu/swarm-$stack_env_name"
-  local stack_env_dir="$swarm_env_dir/stacks/$stack_name/machine-template"
-  if [ -d "$stack_env_dir" ]; then
+  if [ -d "$RAW_MACHINE_STORAGE_PATH" ]; then
     return 0
   fi
   return 1
@@ -509,7 +505,7 @@ main() {
   done
 
   if [ ! -d "$config_path" ]; then
-    config_path="$STACK_ENV_DIR/cluster.json"
+    config_path="$STACK_DIR/cluster.json"
   fi
 
   if [ ! -d "$config_path" ]; then

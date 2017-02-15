@@ -1,0 +1,245 @@
+#!/bin/bash
+
+debug() {
+  local debug_key='octoswarm'
+  local cyan='\033[0;36m'
+  local no_color='\033[0;0m'
+  if [ -z "$DEBUG" ]; then
+    return 0
+  fi
+  echo "$debug_key" | grep "$DEBUG"
+  local is_valid_debug="$?"
+  if [ "$debug_key" == '*' -a "$is_valid_debug" != "0" ]; then
+    return 0
+  fi
+  local message="$@"
+  (>&2 echo -e "[${cyan}${debug_key}${no_color}]: $message")
+}
+
+fatal() {
+  local message="$1"
+  (>&2 echo "Error: $message")
+  exit 1
+}
+
+script_directory(){
+  local source="${BASH_SOURCE[0]}"
+  local dir=""
+
+  while [ -h "$source" ]; do # resolve $source until the file is no longer a symlink
+    dir="$( cd -P "$( dirname "$source" )" && pwd )"
+    source="$(readlink "$source")"
+    [[ $source != /* ]] && source="$dir/$source" # if $source was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+  done
+
+  dir="$( cd -P "$( dirname "$source" )" && pwd )"
+
+  echo "$dir"
+}
+
+usage(){
+  echo 'USAGE: octoswarm <script-name> [options]'
+  echo ''
+  echo 'Arguments:'
+  echo '  -h, --help         print this help text'
+  echo '  -v, --version      print the version'
+  echo 'Environment:'
+  echo '  DEBUG              print debug output'
+  echo 'Avialable Commands:'
+  echo ''
+  get_commands
+  echo ''
+}
+
+version(){
+  local directory="$(script_directory)/.."
+
+  if [ -f "$directory/VERSION" ]; then
+    cat "$directory/VERSION"
+  else
+    echo "unknown"
+  fi
+}
+
+assert_stack() {
+  if [ ! -f "$STACK_CONFIG_PATH" ]; then
+    fatal "octoswarm must be run in a folder with a cluster.json"
+  fi
+  require_config_value '.'
+  require_config_value '.stackEnvName'
+  require_config_value '.stackName'
+}
+
+assert_octoswarm_command() {
+  local script_name="$1"
+  case "$script_name" in
+    ls | list)
+      get_commands
+      exit 0
+      ;;
+  esac
+  if [ -z "$(which $script_name)" ]; then
+    echo "The octoswarm cannot run command $script_name"
+    echo ''
+    echo 'It must be one of the following scripts:'
+    echo ''
+    get_commands
+    echo ''
+    return 1
+  fi
+  return 0
+}
+
+check_config_value() {
+  local key="$1"
+  cat "$STACK_CONFIG_PATH" | jq "$key" &> /dev/null
+  local is_valid="$?"
+  if [ "$is_valid" != "0" ]; then
+    return 1
+  fi
+  return 0
+}
+
+create_machines_files() {
+  if [ ! -d "$RAW_MACHINE_STORAGE_PATH" ]; then
+    echo "Missing $RAW_MACHINE_STORAGE_PATH"
+    return 1
+  fi
+
+  rm -rf $MACHINE_STORAGE_PATH
+  mkdir -p $MACHINE_STORAGE_PATH
+  cp -rfp $RAW_MACHINE_STORAGE_PATH/* $MACHINE_STORAGE_PATH 2> /dev/null
+  local rpl_key="$(escape_value_for_sed "\$HOME/Projects/Octoblu/swarm-$STACK_ENV_NAME/stacks/$STACK_NAME/machine")"
+  local rpl_value="$(escape_value_for_sed $MACHINE_STORAGE_PATH)"
+  pushd "$MACHINE_STORAGE_PATH" > /dev/null
+    for file in `find . -iname '*.json'`; do
+      cat "$file" | sed -e "s/$rpl_key/$rpl_value/" | envsubst > "$file.tmp" && mv "$file.tmp" "$file"
+    done
+    for file in `find . -iname 'id_rsa'`; do
+      chmod 600 "$file"
+    done
+  popd > /dev/null
+}
+
+connect_to_machine() {
+  if [ ! -d "$RAW_MACHINE_STORAGE_PATH" ]; then
+    echo "Missing $RAW_MACHINE_STORAGE_PATH"
+    return 1
+  fi
+  local machine_id
+  machine_id="$(get_manager_machine_id)"
+  local found_machine_code="$?"
+  if [ -z "$machine_id" ]; then
+    fatal "Unable to find machine"
+  fi
+  if [ "$found_machine_code" != "0" ]; then
+    fatal "Unable to connect to $machine_id"
+  fi
+  debug "connecting to machine $machine_id"
+  eval $(docker-machine env --shell=bash "$machine_id")
+}
+
+escape_value_for_sed() {
+  echo "$1" | sed -e 's/[\/&]/\\&/g'
+}
+
+get_manager_machine_id_unverified(){
+  local random_dir="$(find "$MACHINE_STORAGE_PATH/machines" -iname "$STACK_ENV_NAME-$STACK_NAME-manager-*" -maxdepth 1 -mindepth 1 -type d -print0 | sort --zero-terminated --random-sort | head -1)"
+  echo $(basename "$random_dir")
+}
+
+get_manager_machine_id() {
+  local n=0
+  local max=3
+  local exit_code=1
+  until [ $n -ge $max ]; do
+    manager_id="$(get_manager_machine_id_unverified)"
+    debug 'validating machine id' "$manager_id"
+    docker-machine status "$manager_id" &> /dev/null
+    if [ "$?" == "0" ]; then
+      debug 'found docker machine on try' "$n"
+      echo "$manager_id"
+      exit_code=0
+      break;
+    fi
+    n=$[$n+1]
+    if [ $n -ge $max ]; then
+      debug 'exceeded max tries for find docker machine'
+    fi
+  done
+  debug 'exit code' "$exit_code"
+  return $exit_code
+}
+
+get_config_val() {
+  local key="$1"
+  local value="$(cat "$STACK_CONFIG_PATH" | jq --raw-output "$key")"
+  if [ -z "$value" -o "$?" != "0" ]; then
+    fatal "Unable to get $key from config"
+  fi
+  debug "got $key = $value"
+  echo "$value"
+}
+
+get_commands() {
+  for file in `compgen -c`; do
+    echo "octoswarm $file"
+  done
+}
+
+require_config_value() {
+  local key="$1"
+  check_config_value "$key"
+  local is_valid="$?"
+  if [ "$is_valid" != "0" ]; then
+    echo "* Cannot get $key from config."
+    fatal "$STACK_CONFIG_PATH is invalid json."
+  fi
+}
+
+run_script() {
+  local script="$1"; shift
+  "$script" "$@"
+}
+
+main() {
+  local script_name="$1"
+
+  case "$script_name" in
+    -h | --help | help)
+      usage
+      exit 0
+      ;;
+    -v | --version | version)
+      version
+      exit 0
+      ;;
+  esac
+
+  assert_octoswarm_command "$script_name"
+  assert_stack
+
+  export STACK_NAME="$(get_config_val '.stackName')"
+  export STACK_ENV_NAME="$(get_config_val '.stackEnvName')"
+  export STACK_TMP_DIR="/tmp/$STACK_NAME-$STACK_ENV_NAME"
+  export MACHINE_STORAGE_PATH="$STACK_TMP_DIR/machine"
+  mkdir -p "$MACHINE_STORAGE_PATH"
+
+  create_machines_files
+  connect_to_machine
+  env
+
+  if [ "$?" == "0" ]; then
+    shift
+
+    debug "running script $script_name"
+    run_script "$script_name" "$@"
+    eval $(docker-machine env --shell=bash --unset)
+    unset STACK_NAME
+    unset STACK_ENV_NAME
+    unset MACHINE_STORAGE_PATH
+    exit $?
+  fi
+}
+
+main "$@"
