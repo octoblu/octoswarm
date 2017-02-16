@@ -29,6 +29,7 @@ ENV DOCKER_MACHINE_PORT=2376
 ENV STACK_BIN_DIR /usr/src/app/stack
 ENV OCTOSWARM_BIN_DIR /usr/src/app/bin
 ENV STACK_CONFIG_PATH /workdir/cluster.json
+ENV STACK_DIR /workdir
 ENV STACK_ENV_DIR /workdir/env.d
 ENV RAW_MACHINE_STORAGE_PATH /workdir/machine-template
 
