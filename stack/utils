@@ -55,7 +55,7 @@ get_machine_names() {
 
 get_nodes_by_role_unverified() {
   local role="$1"
-  docker node ls --filter "role = $role" | grep -v HOSTNAME | sed 's/\*//' | awk '{print $2}'
+  docker node ls --filter "role = $role" | grep Ready | grep -v HOSTNAME | sed 's/\*//' | awk '{print $2}'
 }
 
 get_nodes_by_role() {
@@ -98,7 +98,7 @@ get_manager_id_unverified() {
 
 get_manager_id() {
   if [ -z "$STACK_DIR" ]; then
-    debug 'cannot get manager id because it does not have STACK_DIR set' 
+    debug 'cannot get manager id because it does not have STACK_DIR set'
     return 0
   fi
   local manager_id="$(get_manager_id_unverified)"

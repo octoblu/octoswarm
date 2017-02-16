@@ -1,0 +1,7 @@
+FROM local/octoswarm
+
+WORKDIR /workdir
+
+LABEL io.whalebrew.name octostack
+
+ENTRYPOINT ["octoswarm", "stack"]

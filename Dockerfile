@@ -14,6 +14,7 @@ RUN tar --strip-components=1 -xvzf docker-1.13.1.tgz -C /usr/local/bin
 RUN chmod +x /usr/local/bin/docker
 
 RUN mkdir -p /usr/src/app
+RUN adduser -D -u 501 octoblu
 
 LABEL io.whalebrew.config.environment='[ \
   "AWS_ACCESS_KEY_ID", \
@@ -31,7 +32,7 @@ ENV OCTOSWARM_BIN_DIR /usr/src/app/bin
 ENV STACK_CONFIG_PATH /workdir/cluster.json
 ENV STACK_DIR /workdir
 ENV STACK_ENV_DIR /workdir/env.d
-ENV RAW_MACHINE_STORAGE_PATH /workdir/machine-template
+ENV MACHINE_STORAGE_PATH /workdir/docker-machine
 
 COPY octoswarm /usr/local/bin/octoswarm
 COPY . /usr/src/app

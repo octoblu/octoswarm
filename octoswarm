@@ -13,13 +13,23 @@ debug() {
     return 0
   fi
   local message="$@"
-  (>&2 echo -e "[${cyan}${debug_key}${no_color}]: $message")
+  errecho "[${cyan}${debug_key}${no_color}]: $message"
 }
 
 fatal() {
-  local message="$1"
-  (>&2 echo "Error: $message")
+  local message="$@"
+  errecho "Error: $message"
   exit 1
+}
+
+warn() {
+  local message="$@"
+  errecho "Warning: $message"
+}
+
+errecho() {
+  local message="$@"
+  (>&2 echo -e "$message")
 }
 
 script_directory(){
@@ -100,29 +110,9 @@ check_config_value() {
   return 0
 }
 
-create_machines_files() {
-  if [ ! -d "$RAW_MACHINE_STORAGE_PATH" ]; then
-    (>&2 echo "Missing $RAW_MACHINE_STORAGE_PATH")
-    return 1
-  fi
-  rm -rf $MACHINE_STORAGE_PATH
-  mkdir -p $MACHINE_STORAGE_PATH
-  cp -rfp $RAW_MACHINE_STORAGE_PATH/* $MACHINE_STORAGE_PATH 2> /dev/null
-  local rpl_key="$(escape_value_for_sed "\$HOME/Projects/Octoblu/swarm-$STACK_ENV_NAME/stacks/$STACK_NAME/machine")"
-  local rpl_value="$(escape_value_for_sed $MACHINE_STORAGE_PATH)"
-  pushd "$MACHINE_STORAGE_PATH" > /dev/null
-    for file in `find . -iname '*.json'`; do
-      cat "$file" | sed -e "s/$rpl_key/$rpl_value/" | envsubst > "$file.tmp" && mv "$file.tmp" "$file"
-    done
-    for file in `find . -iname 'id_rsa'`; do
-      chmod 600 "$file"
-    done
-  popd > /dev/null
-}
-
 connect_to_machine() {
-  if [ ! -d "$RAW_MACHINE_STORAGE_PATH" ]; then
-    (>&2 echo "Missing machine-template directory ($RAW_MACHINE_STORAGE_PATH)")
+  if [ ! -d "$MACHINE_STORAGE_PATH/machines" ]; then
+    warn "Missing docker-machine directory ($MACHINE_STORAGE_PATH)"
     return 1
   fi
   local machine_id
@@ -142,17 +132,14 @@ escape_value_for_sed() {
   echo "$1" | sed -e 's/[\/&]/\\&/g'
 }
 
-get_machine_id_unverified(){
-  local random_dir="$(find "$MACHINE_STORAGE_PATH/machines" -iname "$STACK_ENV_NAME-$STACK_NAME-manager-*" -maxdepth 1 -mindepth 1 -type d -print0 | sort --zero-terminated --random-sort | head -1)"
-  echo $(basename "$random_dir")
+get_machine_ids(){
+  find "$MACHINE_STORAGE_PATH/machines" -iname "$STACK_ENV_NAME-$STACK_NAME-manager-*" -maxdepth 1 -mindepth 1 -type d -print0
 }
 
 get_machine_id() {
-  local n=1
-  local max=5
-  until [ $n -ge $max ]; do
-    local machine_id
-    machine_id="$(get_machine_id_unverified)"
+  local machine_id
+  for machine_dir in $(get_machine_ids); do
+    machine_id="$(basename "$machine_dir")"
     validate_machine_id "$machine_id"
     if [ "$?" == "0" ]; then
       debug 'found manager id on try' "$n"
@@ -200,15 +187,9 @@ run_script() {
 validate_machine_id() {
   local machine_id="$1"
   debug 'validating machine id' "$machine_id"
-  local verified_machine_file="$STACK_TMP_DIR/.verfied-$machine_id"
-  if [ -f "$verified_machine_file" ]; then
-    debug "$machine_id is already verified"
-    return 0
-  fi
-  debug 'verifying manager id' "$machine_id"
+  docker-machine config "$machine_id" 2>&1 | grep -i 'error' && return 1
   docker-machine $(docker-machine config "$machine_id") status "$machine_id" 2>&1 | grep -i 'error' \
     && return 1
-  touch "$verified_machine_file"
   return 0
 }
 
@@ -230,21 +211,14 @@ main() {
   assert_stack
   export STACK_NAME="$(get_config_val '.stackName')"
   export STACK_ENV_NAME="$(get_config_val '.stackEnvName')"
-  export STACK_TMP_DIR="/tmp/$STACK_NAME-$STACK_ENV_NAME"
-  export MACHINE_STORAGE_PATH="$STACK_TMP_DIR/machine"
+  export STACK_TMP_DIR="/tmp/$STACK_ENV_NAME-$STACK_NAME"
   mkdir -p "$MACHINE_STORAGE_PATH"
 
-  create_machines_files
   connect_to_machine
 
   shift
   debug "running script $script_name"
   run_script "$script_name" "$@"
-  eval $(docker-machine env --shell=bash --unset)
-  unset STACK_NAME
-  unset STACK_TMP_DIR
-  unset STACK_ENV_NAME
-  unset MACHINE_STORAGE_PATH
   exit $?
 }
 

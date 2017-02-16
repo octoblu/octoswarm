@@ -120,11 +120,6 @@ main() {
   swarm-join-manager \
     --ip-address "$ip_address" \
     --machine-id "$machine_id" || fatal 'unable to join manager'
-
-  if [ "$skip_elb" != "true" ]; then
-    "$script_dir/stack-add-to-elb" \
-      "$machine_id" "$STACK_NAME" || fatal 'unable to add stack to service'
-  fi
 }
 
 main "$@"

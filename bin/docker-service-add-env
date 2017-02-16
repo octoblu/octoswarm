@@ -1,10 +1,9 @@
 #!/bin/bash
 
 assert_required_params(){
-  local stack_dir="$1"
-  local service_name="$2"
+  local service_name="$1"
 
-  if [ -n "$stack_dir" -a -n "$service_name" ]; then
+  if [ -n "$service_name" ]; then
     return 0
   fi
 
@@ -12,10 +11,6 @@ assert_required_params(){
 
   if [ -z "$service_name" ]; then
     echo "service_name is required"
-  fi
-
-  if [ -z "$stack_dir" ]; then
-    echo "STACK_DIR is empty"
   fi
 
   exit 1

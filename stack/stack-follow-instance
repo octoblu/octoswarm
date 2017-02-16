@@ -63,7 +63,7 @@ script_directory(){
 }
 
 usage(){
-  echo 'USAGE: swarm-follow-instance <service-name> <instance-name> [-- [docker-args]]'
+  echo 'USAGE: follow-instance <service-name> <instance-name> [-- [docker-args]]'
   echo ''
   echo 'Arguments:'
   echo '  -h, --help         print this help text'
