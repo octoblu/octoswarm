@@ -103,7 +103,7 @@ main() {
     "https://github.com/bfirsh/whalebrew/releases/download/0.0.4/whalebrew-$(uname -s)-$(uname -m)" \
     -o /usr/local/bin/whalebrew; \
     chmod +x /usr/local/bin/whalebrew
-  whalebrew install "octoblu/octoswarm:$(version)"
+  whalebrew install "octoblu/octoswarm:v$(version)"
 }
 
 main "$@"
