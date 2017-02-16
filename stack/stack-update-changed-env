@@ -38,7 +38,7 @@ assert_required_params(){
 }
 
 get_changed_env() {
-  local revision="${1:-HEAD}"
+  local revision="$1"
   local pathname="$STACK_ENV_DIR/env.d"
 
   git diff-tree \
@@ -48,17 +48,36 @@ get_changed_env() {
     $revision $pathname
 }
 
+get_operation() {
+  local revision="$1"
+  local file="$2"
+  local pathname="$STACK_ENV_DIR/env.d"
+
+  git diff-tree \
+    -r \
+    --no-commit-id \
+    $revision $pathname \
+  | grep "\t$file\$" \
+  | awk '{print $5}'
+}
+
 update_single_env() {
   local file="$STACK_ENV_DIR/../../$1"
-  local env_value="$(cat $file)"
+  local operation="$2"
   local env_name="$(basename $file)"
   local service_path="$(dirname $file)"
   local service_name="$(basename $service_path)"
   debug "service_name $service_name"
   debug "env_name $env_name"
 
-  echo "Updating ${env_name} to ${env_value} on ${service_name}"
-  docker service update --env-add "${env_name}=${env_value}" "$service_name"
+  if [ "$operation" == "D" ]; then
+    echo "Deleting ${env_name} from "${service_name}""
+    docker service update --env-rm "${env_name}" "$service_name"
+  else
+    local env_value="$(cat $file)"
+    echo "Updating ${env_name} to ${env_value} on ${service_name}"
+    docker service update --env-add "${env_name}=${env_value}" "$service_name"
+  fi
 }
 
 usage(){
@@ -114,9 +133,15 @@ main() {
     echo "This stack does not have an environment"
     exit 0
   fi
+
+  if [ -z "$revision" ]; then
+    revision="HEAD"
+  fi
+
   for file in $(get_changed_env "$revision"); do
-    debug "changed file $file"
-    update_single_env "$file"
+    local operation="$(get_operation "$revision" "$file")"
+    debug "$operation file: $file"
+    update_single_env "$file" "$operation"
   done
 }
 
