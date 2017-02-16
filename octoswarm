@@ -102,7 +102,7 @@ check_config_value() {
 
 create_machines_files() {
   if [ ! -d "$RAW_MACHINE_STORAGE_PATH" ]; then
-    echo "Missing $RAW_MACHINE_STORAGE_PATH"
+    (>&2 echo "Missing $RAW_MACHINE_STORAGE_PATH")
     return 1
   fi
   rm -rf $MACHINE_STORAGE_PATH
@@ -122,7 +122,7 @@ create_machines_files() {
 
 connect_to_machine() {
   if [ ! -d "$RAW_MACHINE_STORAGE_PATH" ]; then
-    (2>echo "Missing machine-template directory ($RAW_MACHINE_STORAGE_PATH)")
+    (>&2 echo "Missing machine-template directory ($RAW_MACHINE_STORAGE_PATH)")
     return 1
   fi
   local machine_id
@@ -237,16 +237,15 @@ main() {
   create_machines_files
   connect_to_machine
 
-  if [ "$?" == "0" ]; then
-    shift
-    debug "running script $script_name"
-    run_script "$script_name" "$@"
-    eval $(docker-machine env --shell=bash --unset)
-    unset STACK_NAME
-    unset STACK_ENV_NAME
-    unset MACHINE_STORAGE_PATH
-    exit $?
-  fi
+  shift
+  debug "running script $script_name"
+  run_script "$script_name" "$@"
+  eval $(docker-machine env --shell=bash --unset)
+  unset STACK_NAME
+  unset STACK_TMP_DIR
+  unset STACK_ENV_NAME
+  unset MACHINE_STORAGE_PATH
+  exit $?
 }
 
 main "$@"
