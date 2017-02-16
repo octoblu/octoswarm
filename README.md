@@ -6,7 +6,7 @@ How to install it:
 
 1. Follow the installation instructions for whalebrew - https://github.com/bfirsh/whalebrew
 1. Run `rm ~/.bin/octoswarm`
-1. Run `ln -nsf $PWD/whalebrew-octoswarm $HOME/.bin/octoswarm`
+1. Run `whalebrew install octoblu/octoswarm`
 
 How to run it:
 

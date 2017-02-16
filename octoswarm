@@ -105,7 +105,6 @@ create_machines_files() {
     echo "Missing $RAW_MACHINE_STORAGE_PATH"
     return 1
   fi
-
   rm -rf $MACHINE_STORAGE_PATH
   mkdir -p $MACHINE_STORAGE_PATH
   cp -rfp $RAW_MACHINE_STORAGE_PATH/* $MACHINE_STORAGE_PATH 2> /dev/null
@@ -123,11 +122,11 @@ create_machines_files() {
 
 connect_to_machine() {
   if [ ! -d "$RAW_MACHINE_STORAGE_PATH" ]; then
-    echo "Missing $RAW_MACHINE_STORAGE_PATH"
+    (2>echo "Missing machine-template directory ($RAW_MACHINE_STORAGE_PATH)")
     return 1
   fi
   local machine_id
-  machine_id="$(get_manager_machine_id)"
+  machine_id="$(get_machine_id)"
   local found_machine_code="$?"
   if [ -z "$machine_id" ]; then
     fatal "Unable to find machine"
@@ -143,32 +142,26 @@ escape_value_for_sed() {
   echo "$1" | sed -e 's/[\/&]/\\&/g'
 }
 
-get_manager_machine_id_unverified(){
+get_machine_id_unverified(){
   local random_dir="$(find "$MACHINE_STORAGE_PATH/machines" -iname "$STACK_ENV_NAME-$STACK_NAME-manager-*" -maxdepth 1 -mindepth 1 -type d -print0 | sort --zero-terminated --random-sort | head -1)"
   echo $(basename "$random_dir")
 }
 
-get_manager_machine_id() {
-  local n=0
-  local max=3
-  local exit_code=1
+get_machine_id() {
+  local n=1
+  local max=5
   until [ $n -ge $max ]; do
-    manager_id="$(get_manager_machine_id_unverified)"
-    debug 'validating machine id' "$manager_id"
-    docker-machine status "$manager_id" &> /dev/null
+    local machine_id
+    machine_id="$(get_machine_id_unverified)"
+    validate_machine_id "$machine_id"
     if [ "$?" == "0" ]; then
-      debug 'found docker machine on try' "$n"
-      echo "$manager_id"
-      exit_code=0
-      break;
+      debug 'found manager id on try' "$n"
+      echo "$machine_id"
+      return 0
     fi
     n=$[$n+1]
-    if [ $n -ge $max ]; then
-      debug 'exceeded max tries for find docker machine'
-    fi
   done
-  debug 'exit code' "$exit_code"
-  return $exit_code
+  return 1
 }
 
 get_config_val() {
@@ -182,8 +175,10 @@ get_config_val() {
 }
 
 get_commands() {
-  for file in `compgen -c`; do
-    echo "octoswarm $file"
+  echo "octoswarm docker"
+  echo "octoswarm docker-machine"
+  for file in `ls "$OCTOSWARM_BIN_DIR"`; do
+    echo "octoswarm ${file/${OCTOSWARM_BIN_DIR}/}"
   done
 }
 
@@ -202,6 +197,21 @@ run_script() {
   "$script" "$@"
 }
 
+validate_machine_id() {
+  local machine_id="$1"
+  debug 'validating machine id' "$machine_id"
+  local verified_machine_file="$STACK_TMP_DIR/.verfied-$machine_id"
+  if [ -f "$verified_machine_file" ]; then
+    debug "$machine_id is already verified"
+    return 0
+  fi
+  debug 'verifying manager id' "$machine_id"
+  docker-machine $(docker-machine config "$machine_id") status "$machine_id" 2>&1 | grep -i 'error' \
+    && return 1
+  touch "$verified_machine_file"
+  return 0
+}
+
 main() {
   local script_name="$1"
 
@@ -218,7 +228,6 @@ main() {
 
   assert_octoswarm_command "$script_name"
   assert_stack
-
   export STACK_NAME="$(get_config_val '.stackName')"
   export STACK_ENV_NAME="$(get_config_val '.stackEnvName')"
   export STACK_TMP_DIR="/tmp/$STACK_NAME-$STACK_ENV_NAME"
@@ -227,11 +236,9 @@ main() {
 
   create_machines_files
   connect_to_machine
-  env
 
   if [ "$?" == "0" ]; then
     shift
-
     debug "running script $script_name"
     run_script "$script_name" "$@"
     eval $(docker-machine env --shell=bash --unset)
