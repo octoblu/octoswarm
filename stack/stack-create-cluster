@@ -130,8 +130,6 @@ create_stack(){
     "$machine_id" || fatal 'unable to create machine'
 
   debug 'machine is created'
-  debug 'sleep for 10 seconds to wait for docker'
-  sleep 10
   eval $(docker-machine env --shell=bash "$machine_id")
 
   local interface="$(get_interface "$machine_id")"

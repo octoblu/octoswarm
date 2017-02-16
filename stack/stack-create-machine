@@ -129,6 +129,8 @@ main() {
     --amazonec2-instance-type "$ec2_instance_type" \
     --amazonec2-security-group "swarm-prod" \
     --amazonec2-security-group "swarm-prod-ssh" || fatal 'unable to create machine'
+  debug 'sleep for 10 seconds to wait for docker'
+  sleep 10
 }
 
 main "$@"
