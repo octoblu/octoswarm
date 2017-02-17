@@ -1,15 +1,56 @@
 #!/bin/bash
 
-env
-exit 1
-docker build -t local/octoswarm . \
-  && docker build -t local/octobash -f Dockerfile-bash . \
-  && docker build -t local/octodocker -f Dockerfile-docker . \
-  && docker build -t local/octodocker-machine -f Dockerfile-docker-machine . \
-  && docker build -t local/octostack -f Dockerfile-stack . \
+PROJECTS_DIR="$HOME/Projects/Octoblu"
 
-whalebrew install local/octoswarm
-whalebrew install local/octobash
-whalebrew install local/octodocker
-whalebrew install local/octodocker-machine
-whalebrew install local/octostack
+ensure_projects() {
+  if [ ! -d "$PROJECTS_DIR/octobash" ]; then
+    hub clone octoblu/octobash "$PROJECTS_DIR/octobash"
+  fi
+  if [ ! -d "$PROJECTS_DIR/octodocker" ]; then
+    hub clone octoblu/octodocker "$PROJECTS_DIR/octodocker"
+  fi
+  if [ ! -d "$PROJECTS_DIR/octomachine" ]; then
+    hub clone octoblu/octomachine "$PROJECTS_DIR/octomachine"
+  fi
+  if [ ! -d "$PROJECTS_DIR/octostack" ]; then
+    hub clone octoblu/octostack "$PROJECTS_DIR/octostack"
+  fi
+}
+
+build() {
+  local image="$1"
+  docker build \
+    -t "local/$image" \
+    -f "$PROJECTS_DIR/$image/Dockerfile-dev" \
+    "$PROJECTS_DIR/$image"
+}
+
+build_projects() {
+  docker build -t local/octoswarm . \
+  && build "octodocker" \
+  && build "octomachine" \
+  && build "octostack" \
+  && build "octobash"
+}
+
+install() {
+  local image="$1"
+  whalebrew uninstall "$image" 2> /dev/null
+  whalebrew install "local/$image"
+}
+
+install_projects() {
+  install "octobash" \
+  && install "octodocker" \
+  && install "octomachine" \
+  && install "octoswarm" \
+  && install "octostack"
+}
+
+main() {
+  ensure_projects \
+  && build_projects \
+  && install_projects
+}
+
+main "$@"

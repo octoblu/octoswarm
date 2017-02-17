@@ -1,0 +1,351 @@
+#!/bin/bash
+
+script_directory(){
+  local source="${BASH_SOURCE[0]}"
+  local dir=""
+
+  while [ -h "$source" ]; do # resolve $source until the file is no longer a symlink
+    dir="$( cd -P "$( dirname "$source" )" && pwd )"
+    source="$(readlink "$source")"
+    [[ $source != /* ]] && source="$dir/$source" # if $source was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+  done
+
+  dir="$( cd -P "$( dirname "$source" )" && pwd )"
+
+  echo "$dir"
+}
+
+source "$(script_directory)/utils" || fatal 'unable to load utils'
+
+debug() {
+  debug_core "stack-ensure-service" "$@"
+}
+
+usage(){
+  echo 'USAGE: stack-ensure-service <service-name>'
+  echo 'Description: ensure a service is up-to-date'
+  echo ''
+  echo 'Arguments:'
+  echo '  -h, --help               print this help text'
+  echo '  -v, --version            print the version'
+  echo 'Environment:'
+  echo '  DEBUG                    print debug output'
+}
+
+version(){
+  local directory="$(script_directory)/.."
+
+  if [ -f "$directory/VERSION" ]; then
+    cat "$directory/VERSION"
+  else
+    echo "unknown"
+  fi
+}
+
+assert_required_config() {
+  require_config_value '.'
+  require_config_value '.services[]'
+}
+
+assert_required_params() {
+  local service_name="$1"
+  if [ -z "$service_name" ]; then
+    fatal 'Missing service-name as first arg'
+  fi
+}
+
+convert_env_file_to_args() {
+  local env_file="$1"
+  local opt_env
+  if [ ! -f "$env_file" ]; then
+    return 1
+  fi
+  for env_line in $(cat "$env_file"); do
+    if [ -z "$env_line" ]; then
+      continue
+    fi
+    opt_env="$opt_env --env-add $env_line"
+  done
+  echo "$opt_env"
+}
+
+get_service_spec() {
+  local name="$1"
+  local key="$2"
+  docker service inspect "$name" 2> /dev/null | jq --compact-output --raw-output ".[0].Spec${key}" 2> /dev/null
+}
+
+has_role() {
+  local name="$1"
+  local role="$2"
+  local constraints=$(get_service_spec "$name" '.TaskTemplate.Placement.Constraints[]')
+  local hasRole='false'
+  for constraint in $constraints; do
+    debug "constraint '$constraint'"
+    if [[ "$constraint" == *'node.role'* ]]; then
+      debug 'constraint exists'
+      hasRole='true'
+      break;
+    fi
+  done
+  debug "has role $hasRole"
+  echo "$hasRole"
+}
+
+has_docker_socket() {
+  local name="$1"
+  local mounts=( $(get_service_spec "$name" '.TaskTemplate.ContainerSpec.Mounts[]') )
+  local hasDockerSocket='false'
+  local dockerSock='/var/run/docker.sock'
+  for mount in $mounts; do
+    debug 'mount' $mount
+    local mountType="$(echo "$mount" | jq --compact-output -r '.Type')"
+    local mountSource="$(echo "$mount" | jq --compact-output -r '.Source')"
+    local mountTarget="$(echo "$mount" | jq --compact-output -r '.Target')"
+    if [ "$mountType" != "bind" ]; then
+      continue
+    fi
+    if [ "$mountSource" != "$dockerSock" ]; then
+      continue
+    fi
+    if [ "$mountTarget" != "$dockerSock" ]; then
+      continue
+    fi
+    hasDockerSocket='true'
+    break;
+  done
+  debug "has docker socket $hasDockerSocket"
+  echo "$hasDockerSocket"
+}
+
+has_same_docker_image() {
+  local name="$1"
+  local expected_image="$2"
+  local image="$(get_service_spec "$name" '.TaskTemplate.ContainerSpec.Image')"
+  if [ "$image" == "$expected_image" ]; then
+    echo 'true'
+  else
+    echo 'false'
+  fi
+}
+
+has_same_replicas() {
+  local name="$1"
+  local expected_count="$2"
+  local count="$(get_service_spec "$name" '.Mode.Replicated.Replicas')"
+  if [ "$count" == "$expected_count" ]; then
+    echo 'true'
+  else
+    echo 'false'
+  fi
+}
+
+ensure_network() {
+  local name="$1"
+  docker network inspect "$name" &> /dev/null
+  if [ "$?" != "0" ]; then
+    debug "creating network $name"
+    docker network create --driver overlay "$name"
+    sleep 1
+  fi
+}
+
+ensure_service() {
+  local service="$1"
+  local opt_beekeeper
+  local opt_docker_sock
+  local opt_role
+  local opt_publish
+  local opt_traefik
+  local opt_run
+  local opt_env
+  local opt_with_registry_auth
+  local opt_mode
+  local opt_replicas
+  local opt_logentries
+  local opt_image
+  local name="$(echo "$service" | jq -r '.name')"
+  local count="$(echo "$service" | jq -r '.count')"
+  local docker_repo="$(echo "$service" | jq -r '.docker.repo')"
+  local network="$(echo "$service" | jq -r '.docker.network')"
+  local mode="$(echo "$service" | jq -r '.docker.mode')"
+  local image="$(echo "$service" | jq -r '.docker.image')"
+  local role="$(echo "$service" | jq -r '.docker.role')"
+  local dockerSock="$(echo "$service" | jq -r '.docker.sock')"
+  local publish="$(echo "$service" | jq --compact-output -r '.docker.publish[]' 2>/dev/null)"
+  local traefikHost="$(echo "$service" | jq -r '.traefik.host')"
+  local traefikPathPrefix="$(echo "$service" | jq -r '.traefik.pathPrefix')"
+  local runOptions="$(echo "$service" | jq --compact-output -r '.docker.runOptions[]' 2>/dev/null)"
+  local withRegistryAuth="$(echo "$service" | jq -r '.docker.withRegistryAuth')"
+  local logentries="$(echo "$service" | jq -r '.docker.logentries')"
+  local envFile="$(echo "$service" | jq -r '.envFile')"
+  local labelFlag='--label'
+  local mountFlag='--mount'
+  local publishFlag='--publish'
+  local constraintFlag='--constraint'
+  local isUpdate='false'
+  if [ "$(get_service_spec "$name")" != "null" ]; then
+    isUpdate='true'
+    labelFlag='--label-add'
+    mountFlag='--mount-add'
+    publishFlag='--publish-add'
+    constraintFlag='--constraint-add'
+  fi
+  if [ "$envFile" == "null" ]; then
+    envFile="$STACK_ENV_DIR/$name.env"
+  fi
+  if [ "$network" == "null" ]; then
+    network="traefik"
+  fi
+  if [ "$mode" == "null" ]; then
+    mode="replicated"
+  fi
+  if [ "$mode" == "replicated" ]; then
+    if [ "$(has_same_replicas "$name" "$count")" == 'false' ]; then
+      opt_replicas="--replicas $count"
+    fi
+  fi
+  opt_mode="--mode $mode"
+  if [ "$image" == "null" ]; then
+    if [ "$docker_repo" == "null" ]; then
+      image="$(swarm-get-latest-docker-url "octoblu/$name")"
+    else
+      image="$(swarm-get-latest-docker-url "$docker_repo")"
+    fi
+  fi
+  local beekeeper="$(echo "$service" | jq -r '.beekeeper')"
+  if [ "$beekeeper" == "null" ]; then
+    beekeeper="true"
+  fi
+  if [ "$beekeeper" == "true" ]; then
+    opt_beekeeper="$labelFlag octoblu.beekeeper.update=true"
+  fi
+  if [ "$beekeeper" == "false" ]; then
+    opt_beekeeper="$labelFlag octoblu.beekeeper.update=false"
+  fi
+  if [ "$withRegistryAuth" == "true" ]; then
+    opt_with_registry_auth="--with-registry-auth"
+  fi
+  if [ "$dockerSock" == "true" ]; then
+    if [ "$(has_docker_socket "$name")" != 'true' ]; then
+      opt_docker_sock="$mountFlag type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock"
+    fi
+  fi
+  if [ "$role" != "null" ]; then
+    if [ "$(has_role "$name" "$role")" != 'true' ]; then
+      opt_role="$constraintFlag node.role==$role"
+    fi
+  fi
+  if [ "$traefikHost" != "null" ]; then
+    local frontendRule="Host:$traefikHost"
+    if [ "$traefikPathPrefix" != "null" ]; then
+      frontendRule="${frontendRule};PathPrefix:${traefikPathPrefix}"
+    fi
+    opt_traefik="$labelFlag traefik.frontend.rule=${frontendRule} $labelFlag traefik.port=80 $labelFlag traefik.docker.network=traefik"
+  fi
+  if [ "$logentries" == "true" -a -n "$LOGENTRIES_TOKEN" ]; then
+    opt_logentries="--log-driver logentries --log-driver logentries-token=$LOGENTRIES_TOKEN"
+  fi
+
+  for port in $publish; do
+    opt_publish="$opt_publish $publishFlag $port"
+  done
+
+  for option in $runOptions; do
+    opt_run="$opt_run $option"
+  done
+
+  ensure_network "$network"
+
+  if [ "$isUpdate" == "true" ]; then
+    debug 'updating service'
+    if [ "$(has_same_docker_image "$name" "$image")" != 'true' ]; then
+      opt_image="--image $image"
+    fi
+    if [ -f "$envFile" ]; then
+      opt_env="$(convert_env_file_to_args "$envFile")"
+    fi
+    docker service update \
+      $opt_replicas \
+      $opt_docker_sock \
+      $opt_role \
+      $opt_traefik \
+      $opt_beekeeper \
+      $opt_with_registry_auth \
+      $opt_image \
+      $opt_env \
+      $opt_logentries \
+      "$name"
+  else
+    debug 'creating service'
+    if [ -f "$envFile" ]; then
+      opt_env="--env-file $envFile"
+    fi
+    docker service create \
+      --name "$name" \
+      --network "$network" \
+      $opt_mode \
+      $opt_replicas \
+      $opt_publish \
+      $opt_docker_sock \
+      $opt_role \
+      $opt_traefik \
+      $opt_beekeeper \
+      $opt_with_registry_auth \
+      $opt_logentries \
+      $opt_env \
+      "$image" \
+        $opt_run
+  fi
+}
+
+get_service_name() {
+  local service="$1"
+  echo "$service" | jq -r '.name'
+}
+
+main() {
+  local service_name
+  while [ "$1" != "" ]; do
+    local param="$1"
+    local value="$2"
+
+    case "$param" in
+      -h | --help)
+        usage
+        exit 0
+        ;;
+      -v | --version)
+        version
+        exit 0
+        ;;
+      *)
+        if [ "${param::1}" == '-' ]; then
+          echo "ERROR: unknown parameter \"$param\""
+          usage
+          exit 1
+        fi
+        if [ -z "$service_name" ]; then
+          service_name="$param"
+        fi
+        ;;
+    esac
+    shift
+  done
+
+  assert_required_config
+  assert_required_params "$service_name"
+
+  is_stack_empty || fatal 'Not initialized, run `create-cluster`'
+
+  local services=( $(get_config_array '.services[]') )
+  for service in "${services[@]}"; do
+    local name="$(get_service_name "$service")"
+    if [ "$name" == "$service_name" ]; then
+      ensure_service "$service"
+      exit $?
+    fi
+  done
+}
+
+main "$@"

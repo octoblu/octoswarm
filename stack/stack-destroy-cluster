@@ -69,16 +69,16 @@ remove_machine_config_files() {
   local stack_path="$1"
   local machine_files="${stack_path}/machine"
   if [ -d "${machine_files}" ]; then
-    debug "removing ${machine_files}" 
+    debug "removing ${machine_files}"
     rm -rf "${machine_files}"
   fi
 }
 
 remove_machine_template_config_files() {
   local stack_path="$1"
-  local machine_templates="${stack_path}/machine-template"
+  local machine_templates="${stack_path}/docker-machine"
   if [ -d "${machine_templates}" ]; then
-    debug "removing ${machine_templates}" 
+    debug "removing ${machine_templates}"
     rm -rf "${machine_templates}"
   fi
 }

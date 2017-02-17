@@ -90,7 +90,7 @@ main() {
     esac
     shift
   done
-  
+
   local whalebrew_version="0.0.4"
   if [ "$(whalebrew version)" != "Whalebrew $whalebrew_version" ]; then
     curl -L \

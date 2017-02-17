@@ -47,6 +47,8 @@ script_directory(){
   echo "$dir"
 }
 
+source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
+
 usage(){
   echo 'USAGE: octoswarm <script-name> [options]'
   echo ''
@@ -125,16 +127,6 @@ assert_octoswarm_command() {
   return 0
 }
 
-check_config_value() {
-  local key="$1"
-  cat "$STACK_CONFIG_PATH" | jq "$key" &> /dev/null
-  local is_valid="$?"
-  if [ "$is_valid" != "0" ]; then
-    return 1
-  fi
-  return 0
-}
-
 connect_to_machine() {
   if [ ! -d "$MACHINE_STORAGE_PATH/machines" ]; then
     warn "Missing docker-machine directory ($MACHINE_STORAGE_PATH)"
@@ -176,32 +168,12 @@ get_machine_id() {
   return 1
 }
 
-get_config_val() {
-  local key="$1"
-  local value="$(cat "$STACK_CONFIG_PATH" | jq --raw-output "$key")"
-  if [ -z "$value" -o "$?" != "0" ]; then
-    fatal "Unable to get $key from config"
-  fi
-  debug "got $key = $value"
-  echo "$value"
-}
-
 get_commands() {
   echo "octoswarm docker"
   echo "octoswarm docker-machine"
   for file in `ls "$OCTOSWARM_BIN_DIR"`; do
     echo "octoswarm ${file/${OCTOSWARM_BIN_DIR}/}"
   done
-}
-
-require_config_value() {
-  local key="$1"
-  check_config_value "$key"
-  local is_valid="$?"
-  if [ "$is_valid" != "0" ]; then
-    echo "* Cannot get $key from config."
-    fatal "$STACK_CONFIG_PATH is invalid json."
-  fi
 }
 
 run_script() {

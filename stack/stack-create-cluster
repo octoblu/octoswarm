@@ -42,57 +42,13 @@ version(){
   fi
 }
 
-require_config_value() {
-  local key="$1"
-  check_config_value "$key"
-  local is_valid="$?"
-  if [ "$is_valid" != "0" ]; then
-    echo "* Cannot get $key from config."
-    fatal "$STACK_CONFIG_PATH is invalid json."
-  fi
-}
-
-check_config_value() {
-  local key="$1"
-  cat "$STACK_CONFIG_PATH" | jq "$key" &> /dev/null
-  local is_valid="$?"
-  if [ "$is_valid" != "0" ]; then
-    return 1
-  fi
-  return 0
-}
-
 assert_required_config() {
   require_config_value '.'
-  require_config_value '.stackEnvName'
-  require_config_value '.stackName'
   require_config_value '.managers.count'
   require_config_value '.managers.instanceType'
   require_config_value '.workers.count'
   require_config_value '.workers.instanceType'
   require_config_value '.services[]'
-}
-
-get_config_val() {
-  local key="$1"
-  local value="$(cat "$STACK_CONFIG_PATH" | jq --raw-output "$key")"
-  if [ -z "$value" -o "$?" != "0" ]; then
-    fatal "Unable to get $key from config"
-  fi
-  debug "got $key = $value"
-  echo "$value"
-}
-
-get_config_array() {
-  local key="$1"
-  cat "$STACK_CONFIG_PATH" | jq --compact-output "$key"
-}
-
-is_stack_empty() {
-  if [ -d "$MACHINE_STORAGE_PATH/machines" ]; then
-    return 0
-  fi
-  return 1
 }
 
 get_interface() {
