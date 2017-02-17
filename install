@@ -99,11 +99,23 @@ main() {
     esac
     shift
   done
-  curl -L \
-    "https://github.com/bfirsh/whalebrew/releases/download/0.0.4/whalebrew-$(uname -s)-$(uname -m)" \
-    -o /usr/local/bin/whalebrew; \
-    chmod +x /usr/local/bin/whalebrew
-  whalebrew install "octoblu/octoswarm:v$(version)"
+  local whalebrew_version="0.0.4"
+  if [ "$(whalebrew version)" != "Whalebrew $whalebrew_version"]; then
+    curl -L \
+      "https://github.com/bfirsh/whalebrew/releases/download/$whalebrew_version/whalebrew-$(uname -s)-$(uname -m)" \
+      -o /usr/local/bin/whalebrew && \
+      chmod +x /usr/local/bin/whalebrew
+  fi
+  whalebrew uninstall octoswarm 2> /dev/null
+  whalebrew install octoblu/octoswarm
+  whalebrew uninstall octostack 2> /dev/null
+  whalebrew install octoblu/octostack
+  whalebrew uninstall octodocker 2> /dev/null
+  whalebrew install octoblu/octodocker
+  whalebrew uninstall octomachine 2> /dev/null
+  whalebrew install octoblu/octomachine
+  whalebrew uninstall octobash 2> /dev/null
+  whalebrew install octoblu/octobash
 }
 
 main "$@"
