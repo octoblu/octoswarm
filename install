@@ -92,7 +92,7 @@ main() {
   done
   
   local whalebrew_version="0.0.4"
-  if [ "$(whalebrew version)" != "Whalebrew $whalebrew_version"]; then
+  if [ "$(whalebrew version)" != "Whalebrew $whalebrew_version" ]; then
     curl -L \
       "https://github.com/bfirsh/whalebrew/releases/download/$whalebrew_version/whalebrew-$(uname -s)-$(uname -m)" \
       -o /usr/local/bin/whalebrew && \

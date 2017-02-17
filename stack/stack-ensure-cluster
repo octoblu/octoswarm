@@ -371,7 +371,7 @@ run_service_command() {
     if [ -f "$token_file" ]; then
       local logentries_token="$(cat $token_file)"
       opt_logentries="--log-driver logentries --log-driver logentries-token=$logentries_token"
-    if
+    fi
   fi
   local env_folder="$STACK_ENV_DIR/$name"
   if [ -d "$env_folder" ]; then
