@@ -257,7 +257,7 @@ ensure_service() {
   local publishFlag='--publish'
   local constraintFlag='--constraint'
   local isUpdate='false'
-  if [ "$(get_service_spec "$service_name")" != "null" ]; then
+  if [ "$(get_service_spec "$service_name")" != "null" ] && [ "$(get_service_spec "$service_name")" != "" ]; then
     isUpdate='true'
     labelFlag='--label-add'
     mountFlag='--mount-add'
