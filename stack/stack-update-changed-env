@@ -39,7 +39,7 @@ assert_required_params(){
 
 get_changed_env() {
   local revision="$1"
-  local pathname="$STACK_ENV_DIR/env.d"
+  local pathname="$STACK_DIR"
 
   git diff-tree \
     -r \
@@ -51,7 +51,7 @@ get_changed_env() {
 get_operation() {
   local revision="$1"
   local file="$2"
-  local pathname="$STACK_ENV_DIR/env.d"
+  local pathname="$STACK_ENV_DIR"
 
   git diff-tree \
     -r \
@@ -62,8 +62,9 @@ get_operation() {
 }
 
 update_single_env() {
-  local file="$STACK_ENV_DIR/../../$1"
+  local file="$STACK_DIR"
   local operation="$2"
+  local env_value="$(cat $file)"
   local env_name="$(basename $file)"
   local service_path="$(dirname $file)"
   local service_name="$(basename $service_path)"
@@ -129,7 +130,7 @@ main() {
     shift
   done
 
-  if [ ! -d "$STACK_ENV_DIR/env.d" ]; then
+  if [ ! -d "$STACK_DIR" ]; then
     echo "This stack does not have an environment"
     exit 0
   fi

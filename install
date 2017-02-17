@@ -1,65 +1,23 @@
 #!/bin/bash
 
-fatal() {
-  local message="$1"
-  echo "Error: $message"
-  exit 1
+SCRIPT_NAME='install'
+
+matches_debug() {
+  if [ -z "$DEBUG" ]; then
+    return 1
+  fi
+  if [[ $SCRIPT_NAME == $DEBUG ]]; then
+    return 0
+  fi
+  return 1
 }
 
-link_bin() {
-  ln -nsf $(script_directory)/bin ~/.bin
-}
-
-write_octoswarm_version() {
-  cat $(script_directory)/VERSION > ~/.octoswarm-version
-}
-
-rm_old_bin() {
-  if [ -f "$HOME/.bin/swarm-get-deployment-status" ]; then
-    rm ~/.bin/swarm-get-deployment-status
-  fi
-  if [ -f "$HOME/.bin/swarm-start-service" ]; then
-    rm ~/.bin/swarm-start-service
-  fi
-  if [ -f "$HOME/.bin/docker-build-project" ]; then
-    rm ~/.bin/docker-build-project
-  fi
-  if [ -f "$HOME/.bin/swarm-create-machine" ]; then
-    rm ~/.bin/swarm-create-machine
-  fi
-  if [ -f "$HOME/.bin/swarm-initialize" ]; then
-    rm ~/.bin/swarm-initialize
-  fi
-  if [ -f "$HOME/.bin/swarm-init-service" ]; then
-    rm ~/.bin/swarm-init-service
-  fi
-  if [ -f "$HOME/.bin/swarm-stop-service" ]; then
-    rm ~/.bin/swarm-stop-service
-  fi
-  if [ -f "$HOME/.bin/swarm-remove-service" ]; then
-    rm ~/.bin/swarm-remove-service
-  fi
-  if [ -f "$HOME/.bin/swarm-restart-service" ]; then
-    rm ~/.bin/swarm-restart-service
-  fi
-  if [ -f "$HOME/.bin/configure-hub-on-all-services" ]; then
-    rm ~/.bin/configure-hub-on-all-services
-  fi
-  if [ -f "$HOME/.bin/octodev-bootstrap" ]; then
-    rm ~/.bin/octodev-bootstrap
-  fi
-  if [ -f "$HOME/.bin/swarm-migrate-to-dev" ]; then
-    rm ~/.bin/swarm-migrate-to-dev
-  fi
-  if [ -f "$HOME/.bin/swarm-migrate-to-prod" ]; then
-    rm ~/.bin/swarm-migrate-to-prod
-  fi
-  if [ -f "$HOME/.bin/swarm-migrate-to-prod-and-start" ]; then
-    rm ~/.bin/swarm-migrate-to-prod-and-start
-  fi
-  if [ -f "$HOME/.bin/swarm-migrate-worker-to-prod" ]; then
-    rm ~/.bin/swarm-migrate-worker-to-prod
-  fi
+debug() {
+  local cyan='\033[0;36m'
+  local no_color='\033[0;0m'
+  local message="$@"
+  matches_debug || return 0
+  (>&2 echo -e "[${cyan}${SCRIPT_NAME}${no_color}]: $message")
 }
 
 script_directory(){
@@ -78,11 +36,17 @@ script_directory(){
 }
 
 usage(){
-  echo 'USAGE: install.sh'
+  echo "USAGE: ${SCRIPT_NAME}"
+  echo ''
+  echo 'Description: Install latest octoswarm'
   echo ''
   echo 'Arguments:'
-  echo '  -h, --help         print this help text'
-  echo '  -v, --version      print the version'
+  echo '  -h, --help       print this help text'
+  echo '  -v, --version    print the version'
+  echo ''
+  echo 'Environment:'
+  echo '  DEBUG            print debug output'
+  echo ''
 }
 
 version(){
@@ -91,11 +55,19 @@ version(){
   if [ -f "$directory/VERSION" ]; then
     cat "$directory/VERSION"
   else
-    echo "unknown"
+    echo "unknown-version"
   fi
 }
 
+install() {
+  local image="$1"
+  whalebrew uninstall "$image" 2> /dev/null
+  docker pull "octoblu/$image"
+  whalebrew install "octoblu/$image"
+}
+
 main() {
+  # Define args up here
   while [ "$1" != "" ]; do
     local param="$1"
     local value="$2"
@@ -118,11 +90,20 @@ main() {
     esac
     shift
   done
+  
+  local whalebrew_version="0.0.4"
+  if [ "$(whalebrew version)" != "Whalebrew $whalebrew_version"]; then
+    curl -L \
+      "https://github.com/bfirsh/whalebrew/releases/download/$whalebrew_version/whalebrew-$(uname -s)-$(uname -m)" \
+      -o /usr/local/bin/whalebrew && \
+      chmod +x /usr/local/bin/whalebrew
+  fi
 
-  rm_old_bin
-  link_bin
-  write_octoswarm_version
-  echo "* octoswarm installed (v$(version)) - you're all up to date now!"
+  install octoswarm
+  install octostack
+  install octodocker
+  install octomachine
+  install octobash
 }
 
 main "$@"

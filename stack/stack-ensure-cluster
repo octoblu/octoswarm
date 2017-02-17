@@ -22,7 +22,7 @@ debug() {
 }
 
 usage(){
-  echo 'USAGE: stack-ensure-cluster [/path/to/cluster.json]'
+  echo 'USAGE: stack-ensure-cluster'
   echo 'Description: bootstrap, or update, a cluster'
   echo ''
   echo 'Arguments:'
@@ -40,26 +40,6 @@ version(){
   else
     echo "unknown"
   fi
-}
-
-assert_required_params(){
-  local config_path="$1"
-
-  if [ -n "$config_path" -a -f "$config_path"  ]; then
-    return 0
-  fi
-
-  usage
-
-  if [ -z "$config_path" ]; then
-    echo "config_path is missing"
-  fi
-
-  if [ ! -f "$config_path" ]; then
-    echo "$config_path is not a file"
-  fi
-
-  exit 1
 }
 
 require_config_value() {
@@ -109,11 +89,7 @@ get_config_array() {
 }
 
 is_stack_empty() {
-  local stack_env_name="$(get_config_val '.stackEnvName')"
-  local stack_name="$(get_config_val '.stackName')"
-  local swarm_env_dir="$HOME/Projects/Octoblu/swarm-$stack_env_name"
-  local stack_env_dir="$swarm_env_dir/stacks/$stack_name/machine-template"
-  if [ -d "$stack_env_dir" ]; then
+  if [ -d "$MACHINE_STORAGE_PATH/machines" ]; then
     return 0
   fi
   return 1
@@ -127,31 +103,8 @@ get_manager_elbs() {
   fi
 }
 
-create_stack(){
-  debug 'about to create stack'
-  local stack_env_name="$(get_config_val '.stackEnvName')"
-  local stack_name="$(get_config_val '.stackName')"
-  local ec2_instance_type="$(get_config_val '.managers.instanceType')"
-  local elbs=( $(get_manager_elbs) )
-  local skip_elb_flag
-
-  if [ ${#elbs[@]} -eq 0 ]; then
-    skip_elb_flag='--skip-elb'
-  fi
-
-  echo "Stack doesn't exist, we are going to create the first manager..."
-  say_yes || fatal 'Exiting due to human fear.'
-
-  env OCTOSWARM_INIT_CMD='stack ensure-cluster' \
-    "$(script_directory)/stack-initialize" "$stack_env_name" "$stack_name" \
-    --ec2-instance-type "$ec2_instance_type" $skip_elb_flag || fatal 'Unable to initialize stack'
-  exit 0
-}
-
 ensure_managers_elb() {
   debug 'ensuring managers elb'
-  local stack_env_name="$(get_config_val '.stackEnvName')"
-  local stack_name="$(get_config_val '.stackName')"
   local elbs=( $(get_manager_elbs) )
   for elb in "${elbs[@]}"; do
     local elb_name="$(echo "$elb" | jq --raw-output ".")"
@@ -161,13 +114,13 @@ ensure_managers_elb() {
       debug "elb $elb_name does not exist"
       echo "ELB count insufficient, creating elb ($elb_name)..."
       say_yes || continue
-      "$(script_directory)/stack-create-elb" "$elb_name"
+      stack create-elb "$elb_name"
     else
       debug "elb $elb_name exists"
     fi
     debug "adding to elb $elb_name"
     for manager_id in $(get_manager_ids); do
-      "$(script_directory)/stack-add-to-elb" "$manager_id" "$elb_name" || fatal 'unable to add to elb'
+      stack add-to-elb "$manager_id" "$elb_name" || fatal 'unable to add to elb'
     done
   done
 }
@@ -177,13 +130,6 @@ ensure_managers() {
   local count="$(get_managers_count)"
   local expected_count="$(get_config_val '.managers.count')"
   local ec2_instance_type="$(get_config_val '.managers.instanceType')"
-  local elbs=( $(get_manager_elbs) )
-  local skip_elb_flag
-
-  if [ ${#elbs[@]} -eq 0 ]; then
-    skip_elb_flag='--skip-elb'
-  fi
-
   if [ "$count" -gt "$expected_count" ]; then
     debug "The current count of managers is greater than expected count"
     debug "SKIPPING..."
@@ -202,8 +148,8 @@ ensure_managers() {
     let "real_count = $count + $i"
     echo "Manager count insufficient, creating manager #$real_count..."
     say_yes || continue
-    "$(script_directory)/stack-create-manager" \
-      --ec2-instance-type "$ec2_instance_type" $skip_elb_flag &
+    stack create-manager \
+      --ec2-instance-type "$ec2_instance_type" &
   done
   debug 'waiting for managers to boot'
   wait $(jobs -p)
@@ -234,7 +180,7 @@ ensure_workers() {
     let "real_count = $count + $i"
     echo "Worker count insufficient, creating worker #$real_count..."
     say_yes || continue
-    "$(script_directory)/stack-create-worker" \
+    stack create-worker \
       --ec2-instance-type "$ec2_instance_type" &
   done
   debug 'waiting for workers to boot'
@@ -330,7 +276,7 @@ ensure_network() {
   fi
 }
 
-get_service_command() {
+run_service_command() {
   local service="$1"
   local opt_beekeeper
   local opt_docker_sock
@@ -342,6 +288,7 @@ get_service_command() {
   local opt_with_registry_auth
   local opt_mode
   local opt_replicas
+  local opt_logentries
   local name="$(echo "$service" | jq -r '.name')"
   local count="$(echo "$service" | jq -r '.count')"
   local docker_repo="$(echo "$service" | jq -r '.docker.repo')"
@@ -355,10 +302,12 @@ get_service_command() {
   local traefikPathPrefix="$(echo "$service" | jq -r '.traefik.pathPrefix')"
   local runOptions="$(echo "$service" | jq --compact-output -r '.docker.runOptions[]' 2>/dev/null)"
   local withRegistryAuth="$(echo "$service" | jq -r '.docker.withRegistryAuth')"
+  local logentries="$(echo "$service" | jq -r '.docker.logentries')"
   local labelFlag='--label'
   local mountFlag='--mount'
   local publishFlag='--publish'
   local constraintFlag='--constraint'
+  local envFlag='--env'
   local isUpdate='false'
   if [ "$(get_service_spec "$name")" != "null" ]; then
     isUpdate='true'
@@ -366,6 +315,7 @@ get_service_command() {
     mountFlag='--mount-add'
     publishFlag='--publish-add'
     constraintFlag='--constraint-add'
+    envFlag='--env-add'
   fi
   if [ "$network" == "null" ]; then
     network="traefik"
@@ -416,6 +366,20 @@ get_service_command() {
     fi
     opt_traefik="$labelFlag traefik.frontend.rule=${frontendRule} $labelFlag traefik.port=80 $labelFlag traefik.docker.network=traefik"
   fi
+  if [ "$logentries" == "true" ]; then
+    local logentries_token_file="$STACK_ENV_DIR/docker-logentries/LOGENTRIES_TOKEN"
+    if [ -f "$token_file" ]; then
+      local logentries_token="$(cat $token_file)"
+      opt_logentries="--log-driver logentries --log-driver logentries-token=$logentries_token"
+    if
+  fi
+  local env_folder="$STACK_ENV_DIR/$name"
+  if [ -d "$env_folder" ]; then
+    for file in $(ls $env_folder); do
+      value="$(cat "$env_folder/$file")"
+      opt_env="$opt_env $envFlag $file=$value "
+    done
+  fi
 
   for port in $publish; do
     opt_publish="$opt_publish $publishFlag $port"
@@ -433,7 +397,7 @@ get_service_command() {
     if [ "$(has_same_docker_image "$name" "$image")" != 'true' ]; then
       opt_image="--image $image"
     fi
-    echo docker service update \
+    docker service update \
       $opt_replicas \
       $opt_docker_sock \
       $opt_role \
@@ -441,11 +405,12 @@ get_service_command() {
       $opt_beekeeper \
       $opt_with_registry_auth \
       $opt_image \
+      $opt_env \
+      $opt_logentries \
       "$name"
   else
     debug 'creating service'
-    opt_env="$(docker-service-get-env-args "$name")"
-    echo docker service create \
+    docker service create \
       --name "$name" \
       --network "$network" \
       $opt_mode \
@@ -456,31 +421,22 @@ get_service_command() {
       $opt_traefik \
       $opt_beekeeper \
       $opt_with_registry_auth \
+      $opt_logentries \
       $opt_env \
       "$image" \
         $opt_run
   fi
 }
 
-run_service_command() {
-  local cmd="$@"
-  echo "Do you want to run the following command?"
-  echo "  $cmd"
-  say_yes || return 0
-  debug 'service command' `$cmd 2>&1`
-}
-
 ensure_service() {
   local service="$1"
   local name="$(echo "$service" | jq -r '.name')"
   local count="$(echo "$service" | jq -r '.count')"
-  local command="$(get_service_command "$service")"
-  run_service_command $command
+  run_service_command "$service"
   return $?
 }
 
 main() {
-  local config_path
   while [ "$1" != "" ]; do
     local param="$1"
     local value="$2"
@@ -500,38 +456,19 @@ main() {
           usage
           exit 1
         fi
-        if [ -z "$config_path" ]; then
-          config_path="$param"
-        fi
         ;;
     esac
     shift
   done
 
-  if [ ! -d "$config_path" ]; then
-    config_path="$STACK_ENV_DIR/cluster.json"
-  fi
-
-  if [ ! -d "$config_path" ]; then
-    config_path="$PWD/cluster.json"
-  fi
-
-  assert_required_params "$config_path"
-
-  unset STACK_CONFIG_PATH
-  export STACK_CONFIG_PATH="$config_path"
-  debug "config file $STACK_CONFIG_PATH"
-
   assert_required_config
 
-  is_stack_empty || create_stack
+  is_stack_empty || fatal 'Not initialized, run `create-cluster`'
 
   ensure_managers || fatal 'unable to ensure managers'
   ensure_managers_elb || fatal 'unable to ensure managers elb'
   ensure_workers || fatal 'unable to ensure workers'
   ensure_services || fatal 'unable to ensure services'
-
-  unset STACK_CONFIG_PATH
 }
 
 main "$@"

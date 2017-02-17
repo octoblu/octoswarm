@@ -101,7 +101,7 @@ main() {
   assert_required_env
 
   local NEW_UUID=$(cat /dev/urandom | env LC_CTYPE=C tr -dc 'a-z0-9' | fold -w 6 | head -n 1)
-  local machine_id="$STACK_NAME-$role_name-$NEW_UUID"
+  local machine_id="$STACK_ENV_NAME-$STACK_NAME-$role_name-$NEW_UUID"
 
   echo "$machine_id"
 }

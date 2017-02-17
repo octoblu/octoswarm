@@ -218,7 +218,7 @@ main() {
   done
 
   if [ ! -d "$config_path" ]; then
-    config_path="$STACK_ENV_DIR/cluster.json"
+    config_path="$STACK_DIR/cluster.json"
   fi
 
   if [ ! -d "$config_path" ]; then

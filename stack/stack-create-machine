@@ -49,17 +49,6 @@ create_machine() {
   echo "$(docker-machine create $options "$machine_id")"
 }
 
-copy_to_template() {
-  local machine_id="$1"
-  local src_dir="$2"
-  local dest_dir="$3"
-
-  cp -rfp "$src_dir/$machine_id" "$dest_dir/$machine_id"
-  local config_file="$dest_dir/$machine_id/config.json"
-  cat "$config_file" | sed "s;$HOME;\$HOME;g" > "$config_file.tmp" && \
-    mv "$config_file.tmp" "$config_file"
-}
-
 usage(){
   echo 'USAGE: stack-create-machine'
   echo ''
@@ -129,7 +118,7 @@ main() {
   assert_required_params "$machine_id"
 
   echo "Creating $machine_id"
-  
+
   create_machine "$machine_id" \
     --driver amazonec2 \
     --amazonec2-access-key "$AWS_ACCESS_KEY_ID" \
@@ -140,15 +129,8 @@ main() {
     --amazonec2-instance-type "$ec2_instance_type" \
     --amazonec2-security-group "swarm-prod" \
     --amazonec2-security-group "swarm-prod-ssh" || fatal 'unable to create machine'
-
-  mkdir -p $STACK_ENV_DIR/machine/machines
-  mkdir -p $STACK_ENV_DIR/machine-template/machines
-  mkdir -p $STACK_ENV_DIR/machine-template/certs
-  copy_to_template "$machine_id" \
-    $STACK_ENV_DIR/machine/machines \
-    $STACK_ENV_DIR/machine-template/machines || fatal 'unable to copy machine templates'
-
-  cp -rfp $STACK_ENV_DIR/machine/certs/* $STACK_ENV_DIR/machine-template/certs/
+  debug 'sleep for 10 seconds to wait for docker'
+  sleep 10
 }
 
 main "$@"

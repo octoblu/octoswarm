@@ -9,7 +9,7 @@ set_ulimit() {
 
 say_yes() {
   local response
-  if [ "$OVERRIDE_SAY_YES_OVERRIDE" == 'true' ]; then
+  if [ "$SAY_YES" == 'false' ]; then
     echo "You've choosen to not just always say yes. So we are not just gonna do it."
     read -s -p "press 'y' if you want to continue."$'\n' -n 1 response
     if [[ "$response" == 'y' ]]; then
@@ -55,13 +55,13 @@ get_machine_names() {
 
 get_nodes_by_role_unverified() {
   local role="$1"
-  docker node ls --filter "role = $role" | grep -v HOSTNAME | sed 's/\*//' | awk '{print $2}'
+  docker node ls --filter "role = $role" | grep Ready | grep -v HOSTNAME | sed 's/\*//' | awk '{print $2}'
 }
 
 get_nodes_by_role() {
   local role="$1"
-  if [ -z "$STACK_ENV_DIR" ]; then
-    debug 'cannot get nodes because it does not have STACK_ENV_DIR set'
+  if [ -z "$STACK_DIR" ]; then
+    debug 'cannot get nodes because it does not have STACK_DIR set'
     return 0
   fi
   for node_name in $(get_nodes_by_role_unverified "$role"); do
@@ -97,8 +97,8 @@ get_manager_id_unverified() {
 }
 
 get_manager_id() {
-  if [ -z "$STACK_ENV_DIR" ]; then
-    debug 'cannot get manager id because it does not have STACK_ENV_DIR set' 
+  if [ -z "$STACK_DIR" ]; then
+    debug 'cannot get manager id because it does not have STACK_DIR set'
     return 0
   fi
   local manager_id="$(get_manager_id_unverified)"

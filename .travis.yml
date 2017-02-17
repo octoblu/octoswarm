@@ -1,0 +1,4 @@
+language: generic
+notifications:
+  webhooks:
+    - 'https://beekeeper.octoblu.com/webhooks/travis:ci'

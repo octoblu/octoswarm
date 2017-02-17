@@ -1,5 +1,25 @@
 #!/bin/bash
 
+SCRIPT_NAME='uninstall-old'
+
+matches_debug() {
+  if [ -z "$DEBUG" ]; then
+    return 1
+  fi
+  if [[ $SCRIPT_NAME == $DEBUG ]]; then
+    return 0
+  fi
+  return 1
+}
+
+debug() {
+  local cyan='\033[0;36m'
+  local no_color='\033[0;0m'
+  local message="$@"
+  matches_debug || return 0
+  (>&2 echo -e "[${cyan}${SCRIPT_NAME}${no_color}]: $message")
+}
+
 script_directory(){
   local source="${BASH_SOURCE[0]}"
   local dir=""
@@ -15,52 +35,48 @@ script_directory(){
   echo "$dir"
 }
 
-source "$(script_directory)/utils" || fatal 'unable to load utils'
+assert_required_params() {
+  local example_arg="$1"
 
-debug() {
-  debug_core "stack-add-service" "$@"
-}
-
-assert_required_params(){
-  local service_name="$1"
-
-  if [ -n "$service_name" -a ]; then
+  if [ -n "$example_arg" ]; then
     return 0
   fi
 
   usage
 
-  if [ -z "$service_name" ]; then
-    echo "service_name is missing"
+  if [ -z "$example_arg" ]; then
+    echo "Missing example_arg argument"
   fi
 
   exit 1
 }
 
-
 usage(){
-  echo 'USAGE: stack-add-service <service-name>'
+  echo "USAGE: ${SCRIPT_NAME}"
+  echo ''
+  echo 'Description: ...'
   echo ''
   echo 'Arguments:'
-  echo '  -h, --help         print this help text'
-  echo '  -v, --version      print the version'
+  echo '  -h, --help       print this help text'
+  echo '  -v, --version    print the version'
+  echo ''
   echo 'Environment:'
-  echo '  DEBUG              print debug output'
+  echo '  DEBUG            print debug output'
+  echo ''
 }
 
 version(){
-  local directory="$(script_directory)/.."
+  local directory="$(script_directory)"
 
   if [ -f "$directory/VERSION" ]; then
     cat "$directory/VERSION"
   else
-    echo "unknown"
+    echo "unknown-version"
   fi
 }
 
 main() {
-  local service_name
-
+  # Define args up here
   while [ "$1" != "" ]; do
     local param="$1"
     local value="$2"
@@ -79,21 +95,17 @@ main() {
           usage
           exit 1
         fi
-        if [ -z "$service_name" -a -n "$param" ]; then
-         service_name="${param}"
-        fi
         ;;
     esac
     shift
   done
-
-  if [ ! -d "$STACK_ENV_DIR/$service_name" ]; then
-    fatal "This service does not have an environment"
-  fi
-  echo "Copying environment to stack..."
-  mkdir -p "$STACK_ENV_DIR/$service_name"
-  cp -rfp $STACK_ENV_DIR/$service_name/* "$STACK_ENV_DIR/$service_name" && \
-    echo "done."
+  for file_name in `ls $(script_directory)/bin`; do
+    local file="$HOME/.bin/$file_name"
+    if [ -f "$file" ]; then
+      echo "removing bin file $file"
+      rm "$file"
+    fi
+  done
 }
 
 main "$@"

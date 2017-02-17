@@ -24,19 +24,9 @@ debug() {
 assert_required_params() {
   local machine_id="$1"
 
-  if [ -n "$machine_id" ]; then
-    return 0
-  fi
-
-  usage
-  echo ''
-
   if [ -z "$machine_id" ]; then
-    echo "Missing machine-id as first argument"
-    exit 1
+    fatal "Missing machine-id as first argument"
   fi
-
-  exit 1
 }
 
 usage(){
@@ -65,24 +55,23 @@ version(){
 demote_machine() {
   local machine_id="$1"
   debug "demoting machine $machine_id"
-  docker node demote "$machine_id" 2> /dev/null
+  docker node demote "$machine_id" > /dev/null
 }
 
 drain_machine() {
   local machine_id="$1"
-  docker node update --availability drain "$machine_id" 2> /dev/null
+  docker node update --availability drain "$machine_id" > /dev/null
 }
 
 remove_docker_machine() {
   local machine_id="$1"
   debug "removing docker-machine $machine_id"
-  docker-machine rm --force "$machine_id" 2> /dev/null
+  docker-machine rm --force "$machine_id" > /dev/null
 }
 
 remove_config() {
-  local folder="$1"
-  local machine_id="$2"
-  local config_folder="$STACK_ENV_DIR/$folder/machines/$machine_id"
+  local machine_id="$1"
+  local config_folder="$MACHINE_STORAGE_PATH/machines/$machine_id"
   if [ -d "$config_folder" ]; then
     debug "removing $config_folder"
     rm -rf "$config_folder"
@@ -135,8 +124,7 @@ main() {
   demote_machine "$machine_id"
   drain_machine "$machine_id"
   remove_docker_machine "$machine_id"
-  remove_config "machine" "$machine_id"
-  remove_config "machine-template" "$machine_id"
+  remove_config "$machine_id"
 }
 
 main "$@"
