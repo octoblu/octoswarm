@@ -7,10 +7,12 @@ The new octoswarm using docker
 1. Run `./uninstall-old`
 2. Run `./install`
 
-## Usage
+## Important Changes
 
 - `machine-templates` and `machine` directories are obsolete. Use the directory `docker-machine`.
 - `octoswarm` must run inside of a stack with a `cluster.json`
+- You will need the project `octoswarm-stack`. `swarm-prod` and `swarm-smart` are now obsolete.
+- All services now have a `[service-name].env` file in `env.d` which replaces the `env.d/[service-name]/[env...]` structure.
 - These commands have changed/added:
   - `octoswarm` - replaces octoswarm tmux enviroment
   - `octostack` - replaces `stack *`
@@ -25,3 +27,6 @@ The new octoswarm using docker
   - `octoswarm swarm-join-worker` - replaces `swarm-join-worker`
   - `octostack ensure-cluster` - no longer creates a stack
   - `octostack create-cluster` - must be used to create a stack
+  - `octostack ensure-service <service-name>`
+    - now uses `--env-file` for `docker service create`
+    - now uses a smart (possibly too smart) detection of env variables
