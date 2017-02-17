@@ -7,4 +7,4 @@ RUN touch /.viminfo && chown 501:501 /.viminfo
 
 LABEL io.whalebrew.name octobash
 
-ENTRYPOINT ["octoswarm" "bash"]
+ENTRYPOINT ["octoswarm", "bash"]

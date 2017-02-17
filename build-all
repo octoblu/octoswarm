@@ -1,0 +1,15 @@
+#!/bin/bash
+
+env
+exit 1
+docker build -t local/octoswarm . \
+  && docker build -t local/octobash -f Dockerfile-bash . \
+  && docker build -t local/octodocker -f Dockerfile-docker . \
+  && docker build -t local/octodocker-machine -f Dockerfile-docker-machine . \
+  && docker build -t local/octostack -f Dockerfile-stack . \
+
+whalebrew install local/octoswarm
+whalebrew install local/octobash
+whalebrew install local/octodocker
+whalebrew install local/octodocker-machine
+whalebrew install local/octostack
