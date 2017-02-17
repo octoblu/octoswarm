@@ -9,7 +9,7 @@ set_ulimit() {
 
 say_yes() {
   local response
-  if [ "$OVERRIDE_SAY_YES_OVERRIDE" == 'true' ]; then
+  if [ "$SAY_YES" == 'false' ]; then
     echo "You've choosen to not just always say yes. So we are not just gonna do it."
     read -s -p "press 'y' if you want to continue."$'\n' -n 1 response
     if [[ "$response" == 'y' ]]; then

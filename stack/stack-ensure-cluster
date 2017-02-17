@@ -288,6 +288,7 @@ run_service_command() {
   local opt_with_registry_auth
   local opt_mode
   local opt_replicas
+  local opt_logentries
   local name="$(echo "$service" | jq -r '.name')"
   local count="$(echo "$service" | jq -r '.count')"
   local docker_repo="$(echo "$service" | jq -r '.docker.repo')"
@@ -301,6 +302,7 @@ run_service_command() {
   local traefikPathPrefix="$(echo "$service" | jq -r '.traefik.pathPrefix')"
   local runOptions="$(echo "$service" | jq --compact-output -r '.docker.runOptions[]' 2>/dev/null)"
   local withRegistryAuth="$(echo "$service" | jq -r '.docker.withRegistryAuth')"
+  local logentries="$(echo "$service" | jq -r '.docker.logentries')"
   local labelFlag='--label'
   local mountFlag='--mount'
   local publishFlag='--publish'
@@ -364,6 +366,13 @@ run_service_command() {
     fi
     opt_traefik="$labelFlag traefik.frontend.rule=${frontendRule} $labelFlag traefik.port=80 $labelFlag traefik.docker.network=traefik"
   fi
+  if [ "$logentries" == "true" ]; then
+    local logentries_token_file="$STACK_ENV_DIR/docker-logentries/LOGENTRIES_TOKEN"
+    if [ -f "$token_file" ]; then
+      local logentries_token="$(cat $token_file)"
+      opt_logentries="--log-driver logentries --log-driver logentries-token=$logentries_token"
+    if
+  fi
   local env_folder="$STACK_ENV_DIR/$name"
   if [ -d "$env_folder" ]; then
     for file in $(ls $env_folder); do
@@ -397,6 +406,7 @@ run_service_command() {
       $opt_with_registry_auth \
       $opt_image \
       $opt_env \
+      $opt_logentries \
       "$name"
   else
     debug 'creating service'
@@ -411,6 +421,7 @@ run_service_command() {
       $opt_traefik \
       $opt_beekeeper \
       $opt_with_registry_auth \
+      $opt_logentries \
       $opt_env \
       "$image" \
         $opt_run

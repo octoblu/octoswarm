@@ -53,8 +53,15 @@ usage(){
   echo 'Arguments:'
   echo '  -h, --help         print this help text'
   echo '  -v, --version      print the version'
+  echo ''
   echo 'Environment:'
   echo '  DEBUG              print debug output'
+  echo '  SAY_YES            prompt for dangerous actions'
+  echo '  AWS_ACCESS_KEY_ID     (required)'
+  echo '  AWS_SECRET_ACCESS_KEY (required)'
+  echo '  AWS_DEFAULT_REGION    (required)'
+  echo '  BEEKEEPER_URI         (required)'
+  echo ''
   echo 'Avialable Commands:'
   echo ''
   get_commands
@@ -68,6 +75,24 @@ version(){
     cat "$directory/VERSION"
   else
     echo "unknown"
+  fi
+}
+
+assert_required_env() {
+  if [ -z "$AWS_ACCESS_KEY_ID" ]; then
+    fatal 'Missing required env AWS_ACCESS_KEY_ID'
+  fi
+
+  if [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
+    fatal 'Missing required env AWS_ACCESS_KEY_ID'
+  fi
+
+  if [ -z "$AWS_DEFAULT_REGION" ]; then
+    fatal 'Missing required env AWS_DEFAULT_REGION'
+  fi
+
+  if [ -z "$BEEKEEPER_URI" ]; then
+    fatal 'Missing required env BEEKEEPER_URI'
   fi
 }
 
@@ -207,6 +232,7 @@ main() {
       ;;
   esac
 
+  assert_required_env
   assert_octoswarm_command "$script_name"
   assert_stack
   export STACK_NAME="$(get_config_val '.stackName')"

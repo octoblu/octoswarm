@@ -22,7 +22,7 @@ LABEL io.whalebrew.config.environment='[ \
   "AWS_DEFAULT_REGION", \
   "BEEKEEPER_URI", \
   "DEBUG", \
-  "OVERRIDE_SAY_YES_OVERRIDE" \
+  "SAY_YES" \
 ]'
 
 ENV DOCKER_MACHINE_NAME=default
