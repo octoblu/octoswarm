@@ -153,7 +153,7 @@ ensure_services() {
   local services=( $(get_config_array '.services[]') )
   for service in "${services[@]}"; do
     local name="$(get_service_name "$service")"
-    stack ensure-service "$service" || fatal "unable to ensure service"
+    stack ensure-service "$name" || fatal "unable to ensure service $name"
   done
 }
 

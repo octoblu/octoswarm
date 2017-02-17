@@ -1,5 +1,7 @@
 #!/bin/bash
 
+SERVICE_SPEC_CACHE=""
+
 script_directory(){
   local source="${BASH_SOURCE[0]}"
   local dir=""
@@ -54,47 +56,99 @@ assert_required_params() {
   fi
 }
 
-convert_env_file_to_args() {
+get_env() {
+  local service_name="$1"
+  get_service_spec "$service_name" '.TaskTemplate.ContainerSpec.Env[]'
+}
+
+get_env_from_file() {
   local env_file="$1"
-  local opt_env
   if [ ! -f "$env_file" ]; then
+    debug "no $env_file file"
     return 1
   fi
   for env_line in $(cat "$env_file"); do
-    if [ -z "$env_line" ]; then
-      continue
+    if [ -n "$env_line" ]; then
+      echo "$env_line"
     fi
-    opt_env="$opt_env --env-add $env_line"
   done
-  echo "$opt_env"
+}
+
+get_env_add_options() {
+  local service_name="$1"
+  local env_file="$2"
+  local opt_env_add
+  local exists
+  for env_line in $(get_env_from_file "$env_file"); do
+    exists='false'
+    for actual_env_line in $(get_env "$service_name"); do
+      if [ "$actual_env_line" == "$env_line" ]; then
+        exists='true'
+        break;
+      fi
+    done
+    if [ "$exists" == "false" ]; then
+      debug "needs env: $env_line"
+      opt_env_add="$opt_env_add --env-add $env_line"
+    fi
+  done
+  echo "$opt_env_add"
+}
+
+get_env_rm_options() {
+  local service_name="$1"
+  local env_file="$2"
+  local opt_env_rm=""
+  local exists
+  local actual_env_var=""
+  for actual_env_line in $(get_env "$service_name"); do
+    exists='false'
+    actual_env_var="$(get_env_var "$actual_env_line")"
+    if [ -z "$actual_env_var" ]; then
+      continue;
+    fi
+    for env_line in $(get_env_from_file "$env_file"); do
+      local env_var="$(get_env_var "$env_line")"
+      if [ "$env_var" == "$actual_env_var" ]; then
+        exists='true'
+        break;
+      fi
+    done
+    if [ "$exists" == "false" ]; then
+      debug "removing env: $actual_env_var"
+      opt_env_rm="$opt_env_rm --env-rm $actual_env_var"
+    fi
+  done
+  echo "$opt_env_rm"
+}
+
+get_env_var() {
+  local env_line="$1"
+  echo "$env_line" | sed -e 's/\s*=.*//'
+}
+
+get_service_name() {
+  local service="$1"
+  echo "$service" | jq -r '.name'
+}
+
+get_service_spec_no_cache() {
+  local service_name="$1"
+  docker service inspect "$service_name" 2> /dev/null
 }
 
 get_service_spec() {
-  local name="$1"
+  local service_name="$1"
   local key="$2"
-  docker service inspect "$name" 2> /dev/null | jq --compact-output --raw-output ".[0].Spec${key}" 2> /dev/null
-}
-
-has_role() {
-  local name="$1"
-  local role="$2"
-  local constraints=$(get_service_spec "$name" '.TaskTemplate.Placement.Constraints[]')
-  local hasRole='false'
-  for constraint in $constraints; do
-    debug "constraint '$constraint'"
-    if [[ "$constraint" == *'node.role'* ]]; then
-      debug 'constraint exists'
-      hasRole='true'
-      break;
-    fi
-  done
-  debug "has role $hasRole"
-  echo "$hasRole"
+  if [ -z "$SERVICE_SPEC_CACHE" ]; then
+    SERVICE_SPEC_CACHE="$(get_service_spec_no_cache "$service_name")" || return 1
+  fi
+  echo "$SERVICE_SPEC_CACHE" | jq --compact-output --raw-output ".[0].Spec${key}" 2> /dev/null
 }
 
 has_docker_socket() {
-  local name="$1"
-  local mounts=( $(get_service_spec "$name" '.TaskTemplate.ContainerSpec.Mounts[]') )
+  local service_name="$1"
+  local mounts=$(get_service_spec "$service_name" '.TaskTemplate.ContainerSpec.Mounts[]')
   local hasDockerSocket='false'
   local dockerSock='/var/run/docker.sock'
   for mount in $mounts; do
@@ -118,10 +172,27 @@ has_docker_socket() {
   echo "$hasDockerSocket"
 }
 
+has_role() {
+  local service_name="$1"
+  local role="$2"
+  local constraints=$(get_service_spec "$service_name" '.TaskTemplate.Placement.Constraints[]')
+  local hasRole='false'
+  for constraint in $constraints; do
+    debug "constraint '$constraint'"
+    if [[ "$constraint" == *'node.role'* ]]; then
+      debug 'constraint exists'
+      hasRole='true'
+      break;
+    fi
+  done
+  debug "has role $hasRole"
+  echo "$hasRole"
+}
+
 has_same_docker_image() {
-  local name="$1"
+  local service_name="$1"
   local expected_image="$2"
-  local image="$(get_service_spec "$name" '.TaskTemplate.ContainerSpec.Image')"
+  local image="$(get_service_spec "$service_name" '.TaskTemplate.ContainerSpec.Image')"
   if [ "$image" == "$expected_image" ]; then
     echo 'true'
   else
@@ -130,9 +201,9 @@ has_same_docker_image() {
 }
 
 has_same_replicas() {
-  local name="$1"
+  local service_name="$1"
   local expected_count="$2"
-  local count="$(get_service_spec "$name" '.Mode.Replicated.Replicas')"
+  local count="$(get_service_spec "$service_name" '.Mode.Replicated.Replicas')"
   if [ "$count" == "$expected_count" ]; then
     echo 'true'
   else
@@ -141,11 +212,11 @@ has_same_replicas() {
 }
 
 ensure_network() {
-  local name="$1"
-  docker network inspect "$name" &> /dev/null
+  local service_name="$1"
+  docker network inspect "$service_name" &> /dev/null
   if [ "$?" != "0" ]; then
-    debug "creating network $name"
-    docker network create --driver overlay "$name"
+    debug "creating network $service_name"
+    docker network create --driver overlay "$service_name"
     sleep 1
   fi
 }
@@ -158,13 +229,15 @@ ensure_service() {
   local opt_publish
   local opt_traefik
   local opt_run
+  local opt_env_add
+  local opt_env_rm
   local opt_env
   local opt_with_registry_auth
   local opt_mode
   local opt_replicas
   local opt_logentries
   local opt_image
-  local name="$(echo "$service" | jq -r '.name')"
+  local service_name="$(echo "$service" | jq -r '.name')"
   local count="$(echo "$service" | jq -r '.count')"
   local docker_repo="$(echo "$service" | jq -r '.docker.repo')"
   local network="$(echo "$service" | jq -r '.docker.network')"
@@ -184,7 +257,7 @@ ensure_service() {
   local publishFlag='--publish'
   local constraintFlag='--constraint'
   local isUpdate='false'
-  if [ "$(get_service_spec "$name")" != "null" ]; then
+  if [ "$(get_service_spec "$service_name")" != "null" ]; then
     isUpdate='true'
     labelFlag='--label-add'
     mountFlag='--mount-add'
@@ -192,7 +265,7 @@ ensure_service() {
     constraintFlag='--constraint-add'
   fi
   if [ "$envFile" == "null" ]; then
-    envFile="$STACK_ENV_DIR/$name.env"
+    envFile="$STACK_ENV_DIR/$service_name.env"
   fi
   if [ "$network" == "null" ]; then
     network="traefik"
@@ -201,14 +274,14 @@ ensure_service() {
     mode="replicated"
   fi
   if [ "$mode" == "replicated" ]; then
-    if [ "$(has_same_replicas "$name" "$count")" == 'false' ]; then
+    if [ "$(has_same_replicas "$service_name" "$count")" == 'false' ]; then
       opt_replicas="--replicas $count"
     fi
   fi
   opt_mode="--mode $mode"
   if [ "$image" == "null" ]; then
     if [ "$docker_repo" == "null" ]; then
-      image="$(swarm-get-latest-docker-url "octoblu/$name")"
+      image="$(swarm-get-latest-docker-url "octoblu/$service_name")"
     else
       image="$(swarm-get-latest-docker-url "$docker_repo")"
     fi
@@ -227,12 +300,12 @@ ensure_service() {
     opt_with_registry_auth="--with-registry-auth"
   fi
   if [ "$dockerSock" == "true" ]; then
-    if [ "$(has_docker_socket "$name")" != 'true' ]; then
+    if [ "$(has_docker_socket "$service_name")" != 'true' ]; then
       opt_docker_sock="$mountFlag type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock"
     fi
   fi
   if [ "$role" != "null" ]; then
-    if [ "$(has_role "$name" "$role")" != 'true' ]; then
+    if [ "$(has_role "$service_name" "$role")" != 'true' ]; then
       opt_role="$constraintFlag node.role==$role"
     fi
   fi
@@ -259,12 +332,11 @@ ensure_service() {
 
   if [ "$isUpdate" == "true" ]; then
     debug 'updating service'
-    if [ "$(has_same_docker_image "$name" "$image")" != 'true' ]; then
+    if [ "$(has_same_docker_image "$service_name" "$image")" != 'true' ]; then
       opt_image="--image $image"
     fi
-    if [ -f "$envFile" ]; then
-      opt_env="$(convert_env_file_to_args "$envFile")"
-    fi
+    opt_env_add="$(get_env_add_options "$service_name" "$envFile")"
+    opt_env_rm="$(get_env_rm_options "$service_name" "$envFile")"
     docker service update \
       $opt_replicas \
       $opt_docker_sock \
@@ -273,16 +345,17 @@ ensure_service() {
       $opt_beekeeper \
       $opt_with_registry_auth \
       $opt_image \
-      $opt_env \
+      $opt_env_add \
+      $opt_env_rm \
       $opt_logentries \
-      "$name"
+      "$service_name"
   else
     debug 'creating service'
     if [ -f "$envFile" ]; then
       opt_env="--env-file $envFile"
     fi
     docker service create \
-      --name "$name" \
+      --name "$service_name" \
       --network "$network" \
       $opt_mode \
       $opt_replicas \
@@ -297,11 +370,6 @@ ensure_service() {
       "$image" \
         $opt_run
   fi
-}
-
-get_service_name() {
-  local service="$1"
-  echo "$service" | jq -r '.name'
 }
 
 main() {
@@ -339,11 +407,14 @@ main() {
   is_stack_empty || fatal 'Not initialized, run `create-cluster`'
 
   local services=( $(get_config_array '.services[]') )
+  local exit_code
   for service in "${services[@]}"; do
-    local name="$(get_service_name "$service")"
-    if [ "$name" == "$service_name" ]; then
+    local _service_name="$(get_service_name "$service")"
+    if [ "$service_name" == "$_service_name" ]; then
       ensure_service "$service"
-      exit $?
+      exit_code=$?
+      SERVICE_SPEC_CACHE=""
+      exit $exit_code
     fi
   done
 }
