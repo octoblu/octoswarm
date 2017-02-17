@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SCRIPT_NAME='install-new'
+SCRIPT_NAME='install'
 
 matches_debug() {
   if [ -z "$DEBUG" ]; then
@@ -35,26 +35,10 @@ script_directory(){
   echo "$dir"
 }
 
-assert_required_params() {
-  local example_arg="$1"
-
-  if [ -n "$example_arg" ]; then
-    return 0
-  fi
-
-  usage
-
-  if [ -z "$example_arg" ]; then
-    echo "Missing example_arg argument"
-  fi
-
-  exit 1
-}
-
 usage(){
   echo "USAGE: ${SCRIPT_NAME}"
   echo ''
-  echo 'Description: ...'
+  echo 'Description: Install latest octoswarm'
   echo ''
   echo 'Arguments:'
   echo '  -h, --help       print this help text'
@@ -73,6 +57,13 @@ version(){
   else
     echo "unknown-version"
   fi
+}
+
+install() {
+  local image="$1"
+  whalebrew uninstall "$image" 2> /dev/null
+  docker pull "octoblu/$image"
+  whalebrew install "octoblu/$image"
 }
 
 main() {
@@ -99,6 +90,7 @@ main() {
     esac
     shift
   done
+  
   local whalebrew_version="0.0.4"
   if [ "$(whalebrew version)" != "Whalebrew $whalebrew_version"]; then
     curl -L \
@@ -106,16 +98,12 @@ main() {
       -o /usr/local/bin/whalebrew && \
       chmod +x /usr/local/bin/whalebrew
   fi
-  whalebrew uninstall octoswarm 2> /dev/null
-  whalebrew install octoblu/octoswarm
-  whalebrew uninstall octostack 2> /dev/null
-  whalebrew install octoblu/octostack
-  whalebrew uninstall octodocker 2> /dev/null
-  whalebrew install octoblu/octodocker
-  whalebrew uninstall octomachine 2> /dev/null
-  whalebrew install octoblu/octomachine
-  whalebrew uninstall octobash 2> /dev/null
-  whalebrew install octoblu/octobash
+
+  install octoswarm
+  install octostack
+  install octodocker
+  install octomachine
+  install octobash
 }
 
 main "$@"
