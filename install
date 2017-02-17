@@ -75,6 +75,13 @@ version(){
   fi
 }
 
+install() {
+  local image="$1"
+
+  docker pull "$image"
+  whalebrew install "$image"
+}
+
 main() {
   # Define args up here
   while [ "$1" != "" ]; do
@@ -103,7 +110,11 @@ main() {
     "https://github.com/bfirsh/whalebrew/releases/download/0.0.4/whalebrew-$(uname -s)-$(uname -m)" \
     -o /usr/local/bin/whalebrew; \
     chmod +x /usr/local/bin/whalebrew
-  whalebrew install "octoblu/octoswarm:v$(version)"
+
+  install "octoblu/octobash:latest" && \
+  install "octoblu/octostack:latest" && \
+  install "octoblu/octodocker:latest" && \
+  install "octoblu/octomachine:latest"
 }
 
 main "$@"
