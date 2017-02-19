@@ -21,6 +21,14 @@ debug() {
   debug_core "stack-ensure-cluster" "$@"
 }
 
+docker_login() {
+  local machine_id="$1"; shift;
+  local hub_username="$2"; shift;
+  local hub_password="$3"; shift;
+  local options="$@"
+  docker "$(docker-machine config $options "$machine_id")" login --username "$hub_username" --password "$hub_password"
+}
+
 usage(){
   echo 'USAGE: stack-create-cluster'
   echo 'Description: bootstrap a cluster'
@@ -124,11 +132,16 @@ main() {
     shift
   done
 
+  local hub_username="$DOCKER_HUB_USERNAME"
+  local hub_username="$DOCKER_HUB_PASSWORD"
+
   assert_required_config
 
   is_stack_empty && fatal 'stack exists, cowardly refusing to do anything'
 
   create_stack
+  sleep 10
+  docker_login "$machine_id" "$hub_username" "$hub_password"
 }
 
 main "$@"

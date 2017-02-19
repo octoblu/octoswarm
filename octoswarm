@@ -62,6 +62,8 @@ usage(){
   echo '  AWS_ACCESS_KEY_ID     (required)'
   echo '  AWS_SECRET_ACCESS_KEY (required)'
   echo '  AWS_DEFAULT_REGION    (required)'
+  echo '  DOCKER_HUB_USERNAME   (required)'
+  echo '  DOCKER_HUB_PASSWORD   (required)'
   echo '  BEEKEEPER_URI         (required)'
   echo ''
   echo 'Avialable Commands:'
@@ -91,6 +93,14 @@ assert_required_env() {
 
   if [ -z "$AWS_DEFAULT_REGION" ]; then
     fatal 'Missing required env AWS_DEFAULT_REGION'
+  fi
+
+  if [ -z "$DOCKER_HUB_USERNAME" ]; then
+    fatal 'Missing required env DOCKER_HUB_USERNAME'
+  fi
+
+  if [ -z "$DOCKER_HUB_PASSWORD" ]; then
+    fatal 'Missing required env DOCKER_HUB_PASSWORD'
   fi
 
   if [ -z "$BEEKEEPER_URI" ]; then

@@ -23,8 +23,10 @@ debug() {
 
 assert_required_params(){
   local machine_id="$1"
+  local hub_username="$2"
+  local hub_password="$3"
 
-  if [ -n "$machine_id" ]; then
+  if [ -n "$machine_id" ] && [ -n "$hub_username" ] && [ -n "$hub_password" ]; then
     return 0
   fi
 
@@ -34,6 +36,13 @@ assert_required_params(){
     echo "machine_id is missing"
   fi
 
+  if [ -z "$hub_username" ]; then
+    echo "hub_username is missing"
+  fi
+
+  if [ -z "$hub_password" ]; then
+    echo "hub_password is missing"
+  fi
   exit 1
 }
 
@@ -47,6 +56,14 @@ create_machine() {
   local machine_id="$1"; shift;
   local options="$@"
   echo "$(docker-machine create $options "$machine_id")"
+}
+
+docker_login() {
+  local machine_id="$1"; shift;
+  local hub_username="$2"; shift;
+  local hub_password="$3"; shift;
+  local options="$@"
+  docker "$(docker-machine config $options "$machine_id")" login --username "$hub_username" --password "$hub_password"
 }
 
 usage(){
@@ -105,6 +122,9 @@ main() {
     shift
   done
 
+  local hub_username="$DOCKER_HUB_USERNAME"
+  local hub_password="$DOCKER_HUB_PASSWORD"
+
   assert_required_params "$machine_id"
 
   debug "machine id $machine_id"
@@ -115,7 +135,7 @@ main() {
 
   local template_dir=""
 
-  assert_required_params "$machine_id"
+  assert_required_params "$machine_id" "$hub_username" "$hub_password"
 
   echo "Creating $machine_id"
 
@@ -131,6 +151,7 @@ main() {
     --amazonec2-security-group "swarm-prod-ssh" || fatal 'unable to create machine'
   debug 'sleep for 10 seconds to wait for docker'
   sleep 10
+  docker_login "$machine_id" $hub_username" "$hub_password"
 }
 
 main "$@"

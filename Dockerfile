@@ -20,6 +20,8 @@ LABEL io.whalebrew.config.environment='[ \
   "AWS_ACCESS_KEY_ID", \
   "AWS_SECRET_ACCESS_KEY", \
   "AWS_DEFAULT_REGION", \
+  "DOCKER_HUB_USERNAME", \
+  "DOCKER_HUB_PASSWORD", \
   "BEEKEEPER_URI", \
   "DEBUG", \
   "SAY_YES" \
