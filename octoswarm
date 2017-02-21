@@ -118,6 +118,7 @@ connect_to_machine() {
     errecho "$machine_id"
     fatal "Unable to connect to a machine"
   fi
+
   debug "connecting to machine $machine_id"
   eval $(docker-machine env --shell=bash "$machine_id")
 }
@@ -135,6 +136,7 @@ get_machine_id() {
   local machines=$(get_machine_ids)
   for machine_dir in $machines; do
     machine_id="$(basename "$machine_dir")"
+    chmod 600 "$MACHINE_STORAGE_PATH/machines/$machine_id/id_rsa"
     validate_machine_id "$machine_id"
     if [ "$?" == "0" ]; then
       debug "found manager id $machine_id"
