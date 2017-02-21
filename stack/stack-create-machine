@@ -141,7 +141,7 @@ main() {
     --amazonec2-security-group "swarm-prod-ssh" || fatal 'unable to create machine'
   debug 'sleep for 10 seconds to wait for docker'
   sleep 10
-  docker_login "$machine_id" $hub_username" "$hub_password"
+  docker_login "$machine_id" "$hub_username" "$hub_password"
 }
 
 main "$@"
