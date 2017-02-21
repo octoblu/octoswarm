@@ -115,7 +115,7 @@ main() {
   local hub_username="$DOCKER_HUB_USERNAME"
   local hub_password="$DOCKER_HUB_PASSWORD"
 
-  assert_required_params "$machine_id"
+  assert_required_params "$machine_id" "$hub_username" "$hub_password"
 
   debug "machine id $machine_id"
 
