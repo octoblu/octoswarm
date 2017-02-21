@@ -30,3 +30,4 @@ The new octoswarm using docker
   - `octostack ensure-service <service-name>`
     - now uses `--env-file` for `docker service create`
     - now uses a smart (possibly too smart) detection of env variables
+  - `stack initialize` has been removed

@@ -15,7 +15,7 @@ script_directory(){
   echo "$dir"
 }
 
-source "$(script_directory)/utils" || fatal 'unable to load utils'
+source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 
 debug() {
   debug_core "stack-ensure-cluster" "$@"
@@ -38,16 +38,6 @@ usage(){
   echo '  -v, --version            print the version'
   echo 'Environment:'
   echo '  DEBUG                    print debug output'
-}
-
-version(){
-  local directory="$(script_directory)/.."
-
-  if [ -f "$directory/VERSION" ]; then
-    cat "$directory/VERSION"
-  else
-    echo "unknown"
-  fi
 }
 
 assert_required_config() {

@@ -1,7 +1,11 @@
 FROM alpine:latest
 MAINTAINER Octoblu <docker@octoblu.com>
 
-RUN apk add -q --no-cache curl docker openssh-client bash jq python3 gettext coreutils
+RUN apk add -q --no-cache \
+  curl docker openssh-client \
+  bash jq python3 gettext \
+  coreutils nodejs
+
 RUN pip3 install --upgrade pip
 RUN pip3 install awscli
 
@@ -24,7 +28,8 @@ LABEL io.whalebrew.config.environment='[ \
   "DOCKER_HUB_PASSWORD", \
   "BEEKEEPER_URI", \
   "DEBUG", \
-  "SAY_YES" \
+  "SAY_YES", \
+  "OCTOSWARM_LOGENTRIES_TOKEN", \
 ]'
 
 ENV DOCKER_MACHINE_NAME=default
@@ -35,6 +40,7 @@ ENV STACK_CONFIG_PATH /workdir/cluster.json
 ENV STACK_DIR /workdir
 ENV STACK_ENV_DIR /workdir/env.d
 ENV MACHINE_STORAGE_PATH /workdir/docker-machine
+ENV VERSION_FILE_PATH /usr/src/app/VERSION
 
 COPY octoswarm /usr/local/bin/octoswarm
 COPY . /usr/src/app

@@ -52,8 +52,8 @@ usage(){
 version(){
   local directory="$(script_directory)"
 
-  if [ -f "$directory/VERSION" ]; then
-    cat "$directory/VERSION"
+  if [ -f "${directory}/VERSION" ]; then
+    cat "${directory}/VERSION"
   else
     echo "unknown-version"
   fi

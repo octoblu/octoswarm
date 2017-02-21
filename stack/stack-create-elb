@@ -15,7 +15,7 @@ script_directory(){
   echo "$dir"
 }
 
-source "$(script_directory)/utils" || fatal 'unable to load utils'
+source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 
 debug() {
   debug_core "stack-create-elb" "$@"
@@ -52,16 +52,6 @@ usage(){
   echo '  AWS_SECRET_ACCESS_KEY  AWS Secret Key'
   echo '  AWS_DEFAULT_REGION     AWS Default Region'
   echo '  DEBUG                  print debug output'
-}
-
-version(){
-  local directory="$(script_directory)/.."
-
-  if [ -f "$directory/VERSION" ]; then
-    cat "$directory/VERSION"
-  else
-    echo "unknown"
-  fi
 }
 
 main() {

@@ -1,5 +1,11 @@
 #!/bin/bash
 
+source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
+
+debug() {
+  debug_core "swarm-get-latest-docker-url" "$@"
+}
+
 assert_required_params(){
   local service_name="$1"
 
@@ -29,12 +35,6 @@ assert_required_env() {
   exit 1
 }
 
-fatal() {
-  local message="$1"
-  echo "Error: $message"
-  exit 1
-}
-
 script_directory(){
   local source="${BASH_SOURCE[0]}"
   local dir=""
@@ -58,16 +58,6 @@ usage(){
   echo '  -v, --version      print the version'
   echo 'Environment:'
   echo '  BEEKEEPER_URI      the beekeeper uri, with auth'
-}
-
-version(){
-  local directory="$(script_directory)/.."
-
-  if [ -f "$directory/VERSION" ]; then
-    cat "$directory/VERSION"
-  else
-    echo "unknown"
-  fi
 }
 
 get_beekeeper_docker_url() {

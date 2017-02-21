@@ -1,26 +1,6 @@
 #!/bin/bash
 
-debug() {
-  local debug_key='stack'
-  local cyan='\033[0;36m'
-  local no_color='\033[0;0m'
-  if [ -z "$DEBUG" ]; then
-    return 0
-  fi
-  echo "$debug_key" | grep "$DEBUG"
-  local is_valid_debug="$?"
-  if [ "$debug_key" == '*' -a "$is_valid_debug" != "0" ]; then
-    return 0
-  fi
-  local message="$@"
-  (>&2 echo -e "[${cyan}${debug_key}${no_color}]: $message")
-}
-
-fatal() {
-  local message="$1"
-  (>&2 echo "Error: $message")
-  exit 1
-}
+source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 
 script_directory(){
   local source="${BASH_SOURCE[0]}"
@@ -37,6 +17,10 @@ script_directory(){
   echo "$dir"
 }
 
+debug() {
+  debug_core "stack" "$@"
+}
+
 usage(){
   echo 'USAGE: stack <script-name> [options]'
   echo ''
@@ -46,16 +30,6 @@ usage(){
   echo 'Environment:'
   echo '  DEBUG              print debug output'
   echo '  OVERRIDE_SAY_YES_OVERRIDE  override "y" on any confirmation prompt'
-}
-
-version(){
-  local directory="$(script_directory)/.."
-
-  if [ -f "$directory/VERSION" ]; then
-    cat "$directory/VERSION"
-  else
-    echo "unknown"
-  fi
 }
 
 run_script() {

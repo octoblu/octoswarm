@@ -17,7 +17,7 @@ script_directory(){
   echo "$dir"
 }
 
-source "$(script_directory)/utils" || fatal 'unable to load utils'
+source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 
 debug() {
   debug_core "stack-ensure-service" "$@"
@@ -35,10 +35,10 @@ usage(){
 }
 
 version(){
-  local directory="$(script_directory)/.."
 
-  if [ -f "$directory/VERSION" ]; then
-    cat "$directory/VERSION"
+
+  if [ -f "$VERSION_FILE_PATH" ]; then
+    cat "$VERSION_FILE_PATH"
   else
     echo "unknown"
   fi
@@ -316,8 +316,8 @@ ensure_service() {
     fi
     opt_traefik="$labelFlag traefik.frontend.rule=${frontendRule} $labelFlag traefik.port=80 $labelFlag traefik.docker.network=traefik"
   fi
-  if [ "$logentries" == "true" -a -n "$LOGENTRIES_TOKEN" ]; then
-    opt_logentries="--log-driver logentries --log-driver logentries-token=$LOGENTRIES_TOKEN"
+  if [ "$logentries" == "true" -a -n "$OCTOSWARM_LOGENTRIES_TOKEN" ]; then
+    opt_logentries="--log-driver logentries --log-driver logentries-token=$OCTOSWARM_LOGENTRIES_TOKEN"
   fi
 
   for port in $publish; do

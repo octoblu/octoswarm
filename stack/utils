@@ -36,13 +36,23 @@ debug_core() {
     return 0
   fi
   local message="$@"
-  (>&2 echo -e "[${cyan}${debug_key}${no_color}]: $message")
+  errecho "[${cyan}${debug_key}${no_color}]: $message"
 }
 
 fatal() {
-  local message="$1"
-  (>&2 echo "Error: $message")
+  local message="$@"
+  errecho "Error: $message"
   exit 1
+}
+
+warn() {
+  local message="$@"
+  errecho "Warning: $message"
+}
+
+errecho() {
+  local message="$@"
+  (>&2 echo -e "$message")
 }
 
 get_machines() {
@@ -178,4 +188,12 @@ is_stack_empty() {
     return 0
   fi
   return 1
+}
+
+version(){
+  if [ -f "$VERSION_FILE_PATH" ]; then
+    cat "$VERSION_FILE_PATH"
+  else
+    echo "unknown"
+  fi
 }

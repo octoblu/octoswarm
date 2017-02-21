@@ -15,7 +15,7 @@ script_directory(){
   echo "$dir"
 }
 
-source "$(script_directory)/utils" || fatal 'unable to load utils'
+source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 
 debug() {
   debug_core "stack-update-changed-env" "$@"
@@ -92,10 +92,10 @@ usage(){
 }
 
 version(){
-  local directory="$(script_directory)/.."
+  
 
-  if [ -f "$directory/VERSION" ]; then
-    cat "$directory/VERSION"
+  if [ -f "$VERSION_FILE_PATH" ]; then
+    cat "$VERSION_FILE_PATH"
   else
     echo "unknown"
   fi

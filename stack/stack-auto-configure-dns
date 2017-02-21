@@ -37,7 +37,7 @@ script_directory(){
   echo "$dir"
 }
 
-source "$(script_directory)/utils" || fatal 'unable to load utils'
+source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 
 assert_required_params() {
   local domain="$1"
@@ -77,17 +77,6 @@ usage(){
   echo '  DEBUG            print debug output'
   echo ''
 }
-
-version(){
-  local directory="$(script_directory)/.."
-
-  if [ -f "$directory/VERSION" ]; then
-    cat "$directory/VERSION"
-  else
-    echo "unknown-version"
-  fi
-}
-
 # Script Functions
 
 find_services(){
