@@ -63,7 +63,7 @@ docker_login() {
   local hub_username="$2"; shift;
   local hub_password="$3"; shift;
   local options="$@"
-  docker "$(docker-machine config $options "$machine_id")" login --username "$hub_username" --password "$hub_password"
+  docker $(docker-machine config $options "$machine_id") login --username "$hub_username" --password "$hub_password"
 }
 
 usage(){
