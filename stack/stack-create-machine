@@ -53,15 +53,17 @@ select_random_zone(){
 }
 
 create_machine() {
-  local machine_id="$1"; shift;
+  local machine_id="$1"
+  shift
   local options="$@"
   echo "$(docker-machine create $options "$machine_id")"
 }
 
 docker_login() {
-  local machine_id="$1"; shift;
-  local hub_username="$2"; shift;
-  local hub_password="$3"; shift;
+  local machine_id="$1"
+  local hub_username="$2"
+  local hub_password="$3"
+  shift; shift; shift
   local options="$@"
   docker $(docker-machine config $options "$machine_id") login --username "$hub_username" --password "$hub_password"
 }
@@ -124,8 +126,6 @@ main() {
   debug "using ec2 instance type $ec2_instance_type"
 
   local template_dir=""
-
-  assert_required_params "$machine_id" "$hub_username" "$hub_password"
 
   echo "Creating $machine_id"
 
