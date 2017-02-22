@@ -330,6 +330,7 @@ ensure_service() {
 
   ensure_network "$network"
 
+  run_it docker login --username "$DOCKER_HUB_USERNAME" --password "$DOCKER_HUB_PASSWORD" > /dev/null
   if [ "$isUpdate" == "true" ]; then
     debug 'updating service'
     if [ "$(has_same_docker_image "$service_name" "$image")" != 'true' ]; then
