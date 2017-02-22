@@ -103,6 +103,12 @@ assert_octoswarm_command() {
   return 0
 }
 
+create_docker_config() {
+  mkdir -p ~/.docker
+  local header=$(echo "{\"username\":\"${DOCKER_HUB_USERNAME}\",\"password\":\"${DOCKER_HUB_PASSWORD}\"}" | base64 -w 0)
+  echo "{ \"HttpHeaders\": { \"X-Registry-Auth\": \"$header\" } }" > ~/.docker/config.json
+}
+
 connect_to_machine() {
   if [ ! -d "$MACHINE_STORAGE_PATH/machines" ]; then
     warn "Missing docker-machine directory ($MACHINE_STORAGE_PATH)"
@@ -198,6 +204,7 @@ main() {
   export STACK_TMP_DIR="/tmp/$STACK_ENV_NAME-$STACK_NAME"
   mkdir -p "$MACHINE_STORAGE_PATH"
 
+  create_docker_config
   connect_to_machine
 
   shift
