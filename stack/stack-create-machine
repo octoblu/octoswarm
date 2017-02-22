@@ -142,6 +142,10 @@ main() {
   debug 'sleep for 10 seconds to wait for docker'
   sleep 10
   docker_login "$machine_id" "$hub_username" "$hub_password"
+  sleep 10
+  debug 'sleep for 60 seconds to wait for machine to reboot'
+  docker-machine restart "$machine_id"
+  sleep 60
 }
 
 main "$@"
