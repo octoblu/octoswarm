@@ -133,10 +133,16 @@ get_machine_ids(){
 
 get_machine_id() {
   local machine_id
+  local machine_private_key
   local machines=$(get_machine_ids)
   for machine_dir in $machines; do
+    machine_private_key="$machine_dir/id_rsa"
+    if [ -f "$machine_private_key" ]; then
+      chmod 600 "$machine_private_key"
+    fi
+  done
+  for machine_dir in $machines; do
     machine_id="$(basename "$machine_dir")"
-    chmod 600 "$MACHINE_STORAGE_PATH/machines/$machine_id/id_rsa"
     validate_machine_id "$machine_id"
     if [ "$?" == "0" ]; then
       debug "found manager id $machine_id"

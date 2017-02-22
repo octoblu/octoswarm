@@ -91,16 +91,6 @@ usage(){
   echo '  DEBUG              print debug output'
 }
 
-version(){
-  
-
-  if [ -f "$VERSION_FILE_PATH" ]; then
-    cat "$VERSION_FILE_PATH"
-  else
-    echo "unknown"
-  fi
-}
-
 main() {
   local revision;
 

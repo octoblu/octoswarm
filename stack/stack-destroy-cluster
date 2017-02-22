@@ -35,16 +35,6 @@ usage(){
   info
 }
 
-version(){
-  
-
-  if [ -f "$VERSION_FILE_PATH" ]; then
-    cat "$VERSION_FILE_PATH"
-  else
-    echo "unknown"
-  fi
-}
-
 assert_required_params(){
   local stack_path="$1"
 
