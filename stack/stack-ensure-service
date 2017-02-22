@@ -217,7 +217,7 @@ ensure_network() {
   if [ "$?" != "0" ]; then
     debug "creating network $service_name"
     docker network create --driver overlay "$service_name"
-    sleep 1
+    sleep 10
   fi
 }
 
