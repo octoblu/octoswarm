@@ -142,7 +142,7 @@ get_route53_hosted_zone(){
   local domain="$1"
 
   aws route53 list-hosted-zones \
-  | jq ".HostedZones | map(select(.Name == \"$domain\"))[0].Id"
+  | jq --raw-output ".HostedZones | map(select(.Name == \"$domain\"))[0].Id"
 }
 
 get_zone_name() {
@@ -217,7 +217,7 @@ main() {
   load_balancer_target_zone="$(get_load_balancer_target_zone "$load_balancer_name")"
   route53_hosted_zone=$(get_route53_hosted_zone "$zone_name")
 
-  if [ -z "$route53_hosted_zone" -o "$route53_hosted_zone" == "null" ]; then
+  if [ -z "$route53_hosted_zone" ] || [ "$route53_hosted_zone" == "null" ]; then
     echo "Could not find route53 hosted zone for: $domain"
     exit 1
   fi
