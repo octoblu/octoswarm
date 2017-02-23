@@ -22,6 +22,9 @@ usage(){
   echo '  DOCKER_HUB_USERNAME   (required)'
   echo '  DOCKER_HUB_PASSWORD   (required)'
   echo '  BEEKEEPER_URI         (required)'
+  echo '  PINGDOM_APP_KEY       (required)'
+  echo '  PINGDOM_USERNAME      (required)'
+  echo '  PINGDOM_PASSWORD      (required)'
   echo ''
   echo 'Avialable Commands:'
   echo ''
@@ -56,6 +59,18 @@ assert_required_env() {
 
   if [ -z "$OCTOSWARM_LOGENTRIES_TOKEN" ]; then
     fatal 'Missing required env OCTOSWARM_LOGENTRIES_TOKEN'
+  fi
+
+  if [ -z "$PINGDOM_APP_KEY" ]; then
+    fatal 'Missing required env PINGDOM_APP_KEY'
+  fi
+
+  if [ -z "$PINGDOM_USERNAME" ]; then
+    fatal 'Missing required env PINGDOM_USERNAME'
+  fi
+
+  if [ -z "$PINGDOM_PASSWORD" ]; then
+    fatal 'Missing required env PINGDOM_PASSWORD'
   fi
 }
 

@@ -13,6 +13,9 @@ LABEL io.whalebrew.config.environment='[ \
   "DEBUG", \
   "SAY_YES", \
   "OCTOSWARM_LOGENTRIES_TOKEN", \
+  "PINGDOM_APP_KEY", \
+  "PINGDOM_USERNAME", \
+  "PINGDOM_PASSWORD", \
 ]'
 
 ENV DOCKER_MACHINE_NAME=default

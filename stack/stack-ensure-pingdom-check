@@ -5,8 +5,8 @@ SCRIPT_NAME="stack-ensure-pingdom-check"
 source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 
 usage(){
-  echo "USAGE: $SCRIPT_NAME"
-  echo 'Description: ensure pingdom alerts for cluster'
+  echo "USAGE: $SCRIPT_NAME <service_name>"
+  echo 'Description: ensure pingdom alerts for a service'
   echo ''
   echo 'Arguments:'
   echo '  -h, --help        print this help text'
@@ -15,26 +15,71 @@ usage(){
   echo '  DEBUG             print debug output'
 }
 
-assert_required_config() {
-  require_config_value '.'
-  require_config_value '.services[]'
+assert_required_params() {
+  local service_name="$1"
+  if [ -z "$service_name" ]; then
+    fatal 'Missing service-name as first arg'
+  fi
 }
 
-get_service_name() {
+get_pingdom_path() {
   local service="$1"
-  echo "$service" | jq -r '.name'
+  local path="$(get_service_val "$service" '.pingdom.path')"
+  if [ "$path" == "" ]; then
+    path="/healthcheck"
+  fi
+  echo "$path"
 }
 
-ensure_pingdoms() {
-  debug 'ensure pingdoms'
-  local services=( $(get_config_array '.services[]') )
-  for service in "${services[@]}"; do
-    local name="$(get_service_name "$service")"
-    stack ensure-pingdom-check "$name" || fatal "unable to ensure service $name"
-  done
+get_pingdom_tags() {
+  local service="$1"
+  local parent_tags="$(get_config_val '.pingdom.tags')"
+  local service_tags="$(get_service_val "$service" '.pingdom.tags')"
+  if [ "$parent_tags" != "" ] && [ "$service_tags" != "" ]; then
+    parent_tags="$parent_tags,"
+  fi
+  echo "$parent_tags$service_tags"
+}
+
+add_pingdom_check() {
+  local service="$1"
+  local name="$(get_service_val "$service" '.name')"
+  local path="$(get_pingdom_path "$service")"
+  local tags="$(get_pingdom_tags "$service")"
+  local host="$(get_service_val "$service" '.traefik.host')"
+
+  curl \
+    --fail \
+    --request POST \
+    --header "App-Key: $PINGDOM_APP_KEY" \
+    --user "$PINGDOM_USERNAME:$PINGDOM_PASSWORD" \
+    --data 'type=http' \
+    --data 'resolution=1' \
+    --data 'encryption=true' \
+    --data 'contactids=11058966,10866214' \
+    --data 'sendtoemail=true' \
+    --data 'legacy_notifications=true' \
+    --data "name=$name" \
+    --data "host=$hostname" \
+    --data "tags=$tags" \
+    --data "path=$path" \
+    https://api.pingdom.com/api/2.0/checks
+}
+
+ensure_pingdom_check() {
+  local service="$1"
+  debug "ensure pingdom check"
+  local check="$(get_service_val "$service" '.pingdom.check')"
+  if [ "$check" == "true" ]; then
+    add_pingdom_check "$service"
+  fi
+  if [ "$check" == "false" ]; then
+    remove_pingdom_check "$service"
+  fi
 }
 
 main() {
+  local service_name
   while [ "$1" != "" ]; do
     local param="$1"
     local value="$2"
@@ -54,16 +99,30 @@ main() {
           usage
           exit 1
         fi
+        if [ -z "$service_name" ]; then
+          service_name="$param"
+        fi
         ;;
     esac
     shift
   done
 
-  assert_required_config
+  assert_required_params "$service_name"
 
   is_stack_empty || fatal 'Not initialized, run `create-cluster`'
 
-  ensure_pingdoms || fatal 'unable to ensure pingdom'
+  local services=( $(get_config_array '.services[]') )
+  local _service_name
+  local exit_code
+  for service in "${services[@]}"; do
+    _service_name="$(get_service_val "$service" '.name')"
+    if [ "$service_name" == "$_service_name" ]; then
+      ensure_pingdom_check "$service"
+      exit_code=$?
+      SERVICE_SPEC_CACHE=""
+      exit $exit_code
+    fi
+  done
 }
 
 main "$@"

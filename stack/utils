@@ -193,6 +193,20 @@ get_config_val() {
   echo "$value"
 }
 
+get_service_val() {
+  local service="$1"
+  local key="$2"
+  value="$(echo "$service" | jq --raw-output "$key")"
+  if [ -z "$value" -o "$?" != "0" ]; then
+    fatal "Unable to get $key from config"
+  fi
+  if [ "$value" == "null" ]; then
+    value=""
+  fi
+  debug "got $key = $value"
+  echo "$value"
+}
+
 get_config_array() {
   local key="$1"
   cat "$STACK_CONFIG_PATH" | jq --compact-output "$key"
