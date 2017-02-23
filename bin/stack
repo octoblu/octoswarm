@@ -7,7 +7,7 @@ debug() {
 }
 
 usage(){
-  echo 'USAGE: stack <script-name> [options]'
+  echo 'USAGE: stack [--help,--version,--dry-run] <script-name> [options]'
   echo ''
   echo 'Arguments:'
   echo ''
@@ -69,6 +69,7 @@ main() {
       exit 0
       ;;
     --dry-run)
+      warn "Using '--dry-run'"
       export DRY_RUN='true'
       shift;
       script_name="$1"
