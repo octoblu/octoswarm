@@ -28,7 +28,8 @@ assert_required_config() {
 
 get_interface() {
   local machine_id="$1"
-  local ifconf="$(docker-machine ssh "$machine_id" ifconfig)"
+  local ifconf
+  ifconf="$(docker-machine ssh "$machine_id" ifconfig)"
   if [ "$?" != "0" ]; then
     fatal 'Unable to ssh into machine'
     return 1
@@ -48,12 +49,15 @@ get_interface() {
 
 create_stack(){
   debug 'about to create stack'
-  local ec2_instance_type="$(get_config_val '.managers.instanceType')"
+  local ec2_instance_type
+  local machine_id
+  local interface
+  ec2_instance_type="$(get_config_val '.managers.instanceType')"
 
   echo "Stack doesn't exist, we are going to create the first manager..."
   say_yes || fatal 'Exiting due to human fear.'
 
-  local machine_id="$(swarm-generate-machine-id manager)"
+  machine_id="$(swarm-generate-machine-id manager)"
   debug "machine_id $machine_id"
 
   stack create-machine \
@@ -61,9 +65,9 @@ create_stack(){
     "$machine_id" || fatal 'unable to create machine'
 
   debug 'machine is created'
-  eval $(docker-machine env --shell=bash "$machine_id")
+  eval "$(docker-machine env --shell=bash "$machine_id")"
 
-  local interface="$(get_interface "$machine_id")"
+  interface="$(get_interface "$machine_id")"
   if [ "$?" != "0" ]; then
     fatal "$interface"
   fi

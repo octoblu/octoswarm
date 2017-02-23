@@ -32,7 +32,7 @@ assert_required_params(){
 }
 
 select_random_zone(){
-  local zones=('a', 'b', 'c')
+  local zones=('a' 'b' 'c')
   local rand=$[$RANDOM % 3]
   echo "${zones[$rand]/,/}"
 }
@@ -101,16 +101,15 @@ main() {
 
   local hub_username="$DOCKER_HUB_USERNAME"
   local hub_password="$DOCKER_HUB_PASSWORD"
+  local ec2_zone
 
   assert_required_params "$machine_id" "$hub_username" "$hub_password"
 
   debug "machine id $machine_id"
 
-  local ec2_zone="$(select_random_zone)"
+  ec2_zone="$(select_random_zone)"
   debug "using ec2 zone $ec2_zone"
   debug "using ec2 instance type $ec2_instance_type"
-
-  local template_dir=""
 
   echo "Creating $machine_id"
 

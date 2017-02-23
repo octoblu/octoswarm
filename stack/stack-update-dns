@@ -37,9 +37,10 @@ get_load_balancers() {
 
 get_load_balancer_dns() {
   local load_balancer_name="$1"
+  local load_balancer_dns
   local load_balancers=( $(get_load_balancers "$load_balancer_name") )
   for load_balancer in "${load_balancers[@]}"; do
-    local load_balancer_dns="$(echo "$load_balancer" | jq -r '.CanonicalHostedZoneName')"
+    load_balancer_dns="$(echo "$load_balancer" | jq -r '.CanonicalHostedZoneName')"
     if [ -n "$load_balancer_dns" ]; then
       echo "$load_balancer_dns"
       return 0
@@ -51,8 +52,9 @@ get_load_balancer_dns() {
 get_load_balancer_target_zone() {
   local load_balancer_name="$1"
   local load_balancers=( $(get_load_balancers "$load_balancer_name") )
+  local load_balancer_target_zone
   for load_balancer in "${load_balancers[@]}"; do
-    local load_balancer_target_zone="$(echo "$load_balancer" | jq -r '.CanonicalHostedZoneNameID')"
+    load_balancer_target_zone="$(echo "$load_balancer" | jq -r '.CanonicalHostedZoneNameID')"
     if [ -n "$load_balancer_target_zone" ]; then
       echo "$load_balancer_target_zone"
       return 0
@@ -122,14 +124,18 @@ main() {
   fi
 
   debug "load_balancer_name $load_balancer_name"
+  local load_balancer_dns
+  local load_balancer_target_zone
+  local file_path
+  local route53_hosted_zone
 
-  local load_balancer_dns="$(get_load_balancer_dns "$load_balancer_name")"
-  local load_balancer_target_zone="$(get_load_balancer_target_zone "$load_balancer_name")"
+  load_balancer_dns="$(get_load_balancer_dns "$load_balancer_name")"
+  load_balancer_target_zone="$(get_load_balancer_target_zone "$load_balancer_name")"
   debug "load_balancer_dns $load_balancer_dns"
   debug "load_balancer_target_zone $load_balancer_target_zone"
   debug "domain to create: $subdomain.$domain"
 
-  local file_path="$(mktemp)"
+  file_path="$(mktemp)"
 
   env OUTPUT_PATH="$file_path" \
     DOMAIN="$subdomain.$domain" \
@@ -137,7 +143,7 @@ main() {
     ALIAS="$load_balancer_dns" \
     stack write-route-53-batch-file
 
-  local route53_hosted_zone=$(get_route53_hosted_zone "$domain")
+  route53_hosted_zone=$(get_route53_hosted_zone "$domain")
   if [ -z "$route53_hosted_zone" -o "$route53_hosted_zone" == "null" ]; then
     echo "Could not find route53 hosted zone for: $domain"
     exit 1
@@ -145,8 +151,9 @@ main() {
 
   debug "route53_hosted_zone: $route53_hosted_zone"
 
-  if [ "$DRY_RUN" == 'true']; then
+  if [ "$DRY_RUN" == 'true' ]; then
     cat "$file_path"
+    echo ''
   fi
 
   run_cmd aws route53 \

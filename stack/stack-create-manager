@@ -41,7 +41,6 @@ usage(){
   echo '  -h, --help               print this help text'
   echo '  -t, --ec2-instance-type  ec2 instance type to spin up'
   echo '                           (default: t2.medium)'
-  echo '  -s, --skip-elb               skip elb creation'
   echo '  -v, --version            print the version'
   echo 'Environment:'
   echo '  DEBUG                    print debug output'
@@ -62,9 +61,6 @@ main() {
         ec2_instance_type="$value"
         shift
         ;;
-      -s | --skip-elb)
-        skip_elb="true"
-        ;;
       -v | --version)
         version
         exit 0
@@ -80,12 +76,14 @@ main() {
     shift
   done
 
-  local ip_address="$(get_manager_private_ip)"
+  local ip_address
+  local machine_id
+  ip_address="$(get_manager_private_ip)"
   assert_required_params "$ip_address"
 
   assert_required_env
 
-  local machine_id="$(swarm-generate-machine-id manager)"
+  machine_id="$(swarm-generate-machine-id manager)"
 
   stack create-machine \
     --ec2-instance-type "$ec2_instance_type" \

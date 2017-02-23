@@ -81,19 +81,23 @@ main() {
     shift
   done
 
+
   if [ "$has_security_groups" == "0" ]; then
     security_groups=('sg-a931b3d0')
   fi
 
   if [ "$has_subnets" == "0" ]; then
-    subnets=('subnet-04144542', 'subnet-07332765', 'subnet-992c1bed')
+    subnets=('subnet-04144542' 'subnet-07332765' 'subnet-992c1bed')
   fi
+
 
   assert_required_params "$load_balancer_name"
 
+  local all_security_groups="${security_groups[@]}"
+  local all_subnets="${subnets[@]}"
   debug "load_balancer_name $load_balancer_name"
-  debug "security_groups ${security_groups[@]/\,/}"
-  debug "subnets ${subnets[@]/\,/}"
+  debug "security_groups ${all_security_groups/\,/}"
+  debug "subnets ${all_subnets/\,/}"
 
   local cert_arn='arn:aws:iam::822069890720:server-certificate/star_octoblu_com_exp_102018'
 

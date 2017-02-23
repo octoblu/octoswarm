@@ -91,6 +91,7 @@ get_env_rm_options() {
   local opt_env_rm=""
   local exists
   local actual_env_var=""
+  local env_var
   for actual_env_line in $(get_env "$service_name"); do
     exists='false'
     actual_env_var="$(get_env_var "$actual_env_line")"
@@ -98,7 +99,7 @@ get_env_rm_options() {
       continue;
     fi
     for env_line in $(get_env_from_file "$env_file"); do
-      local env_var="$(get_env_var "$env_line")"
+      env_var="$(get_env_var "$env_line")"
       if [ "$env_var" == "$actual_env_var" ]; then
         exists='true'
         break;
@@ -138,14 +139,18 @@ get_service_spec() {
 
 has_docker_socket() {
   local service_name="$1"
-  local mounts=$(get_service_spec "$service_name" '.TaskTemplate.ContainerSpec.Mounts[]')
+  local mounts
+  local mountType
+  local mountSource
+  local mountTarget
+  mounts=$(get_service_spec "$service_name" '.TaskTemplate.ContainerSpec.Mounts[]')
   local hasDockerSocket='false'
   local dockerSock='/var/run/docker.sock'
   for mount in $mounts; do
     debug 'mount' $mount
-    local mountType="$(echo "$mount" | jq --compact-output -r '.Type')"
-    local mountSource="$(echo "$mount" | jq --compact-output -r '.Source')"
-    local mountTarget="$(echo "$mount" | jq --compact-output -r '.Target')"
+    mountType="$(echo "$mount" | jq --compact-output -r '.Type')"
+    mountSource="$(echo "$mount" | jq --compact-output -r '.Source')"
+    mountTarget="$(echo "$mount" | jq --compact-output -r '.Target')"
     if [ "$mountType" != "bind" ]; then
       continue
     fi
@@ -165,7 +170,8 @@ has_docker_socket() {
 has_role() {
   local service_name="$1"
   local role="$2"
-  local constraints=$(get_service_spec "$service_name" '.TaskTemplate.Placement.Constraints[]')
+  local constraints
+  constraints=$(get_service_spec "$service_name" '.TaskTemplate.Placement.Constraints[]')
   local hasRole='false'
   for constraint in $constraints; do
     debug "constraint '$constraint'"
@@ -182,7 +188,8 @@ has_role() {
 has_same_docker_image() {
   local service_name="$1"
   local expected_image="$2"
-  local image="$(get_service_spec "$service_name" '.TaskTemplate.ContainerSpec.Image')"
+  local image
+  image="$(get_service_spec "$service_name" '.TaskTemplate.ContainerSpec.Image')"
   if [ "$image" == "$expected_image" ]; then
     echo 'true'
   else
@@ -193,7 +200,8 @@ has_same_docker_image() {
 has_same_replicas() {
   local service_name="$1"
   local expected_count="$2"
-  local count="$(get_service_spec "$service_name" '.Mode.Replicated.Replicas')"
+  local count
+  count="$(get_service_spec "$service_name" '.Mode.Replicated.Replicas')"
   if [ "$count" == "$expected_count" ]; then
     echo 'true'
   else
@@ -227,21 +235,38 @@ ensure_service() {
   local opt_replicas
   local opt_logentries
   local opt_image
-  local service_name="$(echo "$service" | jq -r '.name')"
-  local count="$(echo "$service" | jq -r '.count')"
-  local docker_repo="$(echo "$service" | jq -r '.docker.repo')"
-  local network="$(echo "$service" | jq -r '.docker.network')"
-  local mode="$(echo "$service" | jq -r '.docker.mode')"
-  local image="$(echo "$service" | jq -r '.docker.image')"
-  local role="$(echo "$service" | jq -r '.docker.role')"
-  local dockerSock="$(echo "$service" | jq -r '.docker.sock')"
-  local publish="$(echo "$service" | jq --compact-output -r '.docker.publish[]' 2>/dev/null)"
-  local traefikHost="$(echo "$service" | jq -r '.traefik.host')"
-  local traefikPathPrefix="$(echo "$service" | jq -r '.traefik.pathPrefix')"
-  local runOptions="$(echo "$service" | jq --compact-output -r '.docker.runOptions[]' 2>/dev/null)"
-  local withRegistryAuth="$(echo "$service" | jq -r '.docker.withRegistryAuth')"
-  local logentries="$(echo "$service" | jq -r '.docker.logentries')"
-  local envFile="$(echo "$service" | jq -r '.envFile')"
+  local service_name
+  local count
+  local docker_repo
+  local network
+  local mode
+  local image
+  local role
+  local dockerSock
+  local publish
+  local traefikHost
+  local traefikPathPrefix
+  local runOptions
+  local withRegistryAuth
+  local logentries
+  local envFile
+  local beekeeper
+  service_name="$(echo "$service" | jq -r '.name')"
+  beekeeper="$(echo "$service" | jq -r '.beekeeper')"
+  count="$(echo "$service" | jq -r '.count')"
+  docker_repo="$(echo "$service" | jq -r '.docker.repo')"
+  network="$(echo "$service" | jq -r '.docker.network')"
+  mode="$(echo "$service" | jq -r '.docker.mode')"
+  image="$(echo "$service" | jq -r '.docker.image')"
+  role="$(echo "$service" | jq -r '.docker.role')"
+  dockerSock="$(echo "$service" | jq -r '.docker.sock')"
+  publish="$(echo "$service" | jq --compact-output -r '.docker.publish[]' 2>/dev/null)"
+  traefikHost="$(echo "$service" | jq -r '.traefik.host')"
+  traefikPathPrefix="$(echo "$service" | jq -r '.traefik.pathPrefix')"
+  runOptions="$(echo "$service" | jq --compact-output -r '.docker.runOptions[]' 2>/dev/null)"
+  withRegistryAuth="$(echo "$service" | jq -r '.docker.withRegistryAuth')"
+  logentries="$(echo "$service" | jq -r '.docker.logentries')"
+  envFile="$(echo "$service" | jq -r '.envFile')"
   local labelFlag='--label'
   local mountFlag='--mount'
   local publishFlag='--publish'
@@ -276,7 +301,6 @@ ensure_service() {
       image="$(swarm-get-latest-docker-url "$docker_repo")"
     fi
   fi
-  local beekeeper="$(echo "$service" | jq -r '.beekeeper')"
   if [ "$beekeeper" == "null" ]; then
     beekeeper="true"
   fi
@@ -397,9 +421,10 @@ main() {
   is_stack_empty || fatal 'Not initialized, run `create-cluster`'
 
   local services=( $(get_config_array '.services[]') )
+  local _service_name
   local exit_code
   for service in "${services[@]}"; do
-    local _service_name="$(get_service_name "$service")"
+    _service_name="$(get_service_name "$service")"
     if [ "$service_name" == "$_service_name" ]; then
       ensure_service "$service"
       exit_code=$?

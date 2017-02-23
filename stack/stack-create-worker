@@ -64,10 +64,12 @@ main() {
     shift
   done
 
-  local ip_address="$(get_manager_private_ip)"
+  local ip_address
+  local machine_id
+  ip_address="$(get_manager_private_ip)"
   assert_required_params "$ip_address"
 
-  local machine_id="$(swarm-generate-machine-id worker)"
+  machine_id="$(swarm-generate-machine-id worker)"
 
   stack create-machine \
     --ec2-instance-type "$ec2_instance_type" "$machine_id" || fatal 'unable to create machine'

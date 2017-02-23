@@ -37,8 +37,9 @@ get_manager_elbs() {
 ensure_managers_elb() {
   debug 'ensuring managers elb'
   local elbs=( $(get_manager_elbs) )
+  local elb_name
   for elb in "${elbs[@]}"; do
-    local elb_name="$(echo "$elb" | jq --raw-output ".")"
+    elb_name="$(echo "$elb" | jq --raw-output ".")"
     elb_exists "$elb_name"
     local exists=$?
     if [ "$exists" == "1" ]; then
@@ -58,9 +59,12 @@ ensure_managers_elb() {
 
 ensure_managers() {
   debug 'ensuring managers'
-  local count="$(get_managers_count)"
-  local expected_count="$(get_config_val '.managers.count')"
-  local ec2_instance_type="$(get_config_val '.managers.instanceType')"
+  local count
+  local expected_count
+  local ec2_instance_type
+  count="$(get_managers_count)"
+  expected_count="$(get_config_val '.managers.count')"
+  ec2_instance_type="$(get_config_val '.managers.instanceType')"
   if [ "$count" -gt "$expected_count" ]; then
     debug "The current count of managers is greater than expected count"
     debug "SKIPPING..."
@@ -87,9 +91,12 @@ ensure_managers() {
 }
 
 ensure_workers() {
-  local count="$(get_workers_count)"
-  local expected_count="$(get_config_val '.workers.count')"
-  local ec2_instance_type="$(get_config_val '.workers.instanceType')"
+  local count
+  local expected_count
+  local ec2_instance_type
+  count="$(get_workers_count)"
+  expected_count="$(get_config_val '.workers.count')"
+  ec2_instance_type="$(get_config_val '.workers.instanceType')"
 
   if [ "$count" -gt "$expected_count" ]; then
     debug "The current count of workers is greater than expected count"
@@ -126,8 +133,9 @@ get_service_name() {
 ensure_services() {
   debug 'ensure services'
   local services=( $(get_config_array '.services[]') )
+  local name
   for service in "${services[@]}"; do
-    local name="$(get_service_name "$service")"
+    name="$(get_service_name "$service")"
     stack ensure-service "$name" || fatal "unable to ensure service $name"
   done
 }

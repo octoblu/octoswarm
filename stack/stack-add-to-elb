@@ -52,8 +52,9 @@ get_services() {
 get_instance_id() {
   local machine_id="$1"
   local services=( $(get_services "$machine_id") )
+  local instance_id
   for service in "${services[@]}"; do
-    local instance_id="$(echo "$service" | jq -r '.InstanceId')"
+    instance_id="$(echo "$service" | jq -r '.InstanceId')"
     if [ -n "$instance_id" ]; then
       echo "$instance_id"
       return 0
@@ -119,7 +120,7 @@ main() {
 
   assert_required_params "$machine_id" "$load_balancer_name"
 
-  local instance_id="$(get_instance_id "$machine_id")"
+  instance_id="$(get_instance_id "$machine_id")"
   debug "machine id '$machine_id'"
   debug "instance id '$instance_id'"
   debug "load balancer name '$load_balancer_name'"
