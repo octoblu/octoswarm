@@ -23,6 +23,14 @@ say_yes() {
   return 0
 }
 
+confirm_please() {
+  local response
+  read -s -p "press 'y' if you want to continue."$'\n' -n 1 response
+  if [[ "$response" != 'y' ]]; then
+    exit 1
+  fi
+}
+
 debug_core() {
   local debug_key="$1"; shift
   local cyan='\033[0;36m'
@@ -107,11 +115,12 @@ get_manager_id_unverified() {
 }
 
 get_manager_id() {
+  local manager_id
   if [ -z "$STACK_DIR" ]; then
     debug 'cannot get manager id because it does not have STACK_DIR set'
     return 0
   fi
-  local manager_id="$(get_manager_id_unverified)"
+  manager_id="$(get_manager_id_unverified)"
   verify_node_name "$manager_id"
 }
 
@@ -120,7 +129,8 @@ get_manager_public_ip() {
 }
 
 get_manager_private_ip() {
-  local public_ip="$(get_manager_public_ip)"
+  local public_ip
+  public_ip="$(get_manager_public_ip)"
   aws ec2 describe-instances --filters "Name=ip-address,Values=$public_ip" | jq --raw-output  '.Reservations[].Instances[].PrivateIpAddress'
 }
 
@@ -170,7 +180,8 @@ check_config_value() {
 
 get_config_val() {
   local key="$1"
-  local value="$(cat "$STACK_CONFIG_PATH" | jq --raw-output "$key")"
+  local value
+  value="$(cat "$STACK_CONFIG_PATH" | jq --raw-output "$key")"
   if [ -z "$value" -o "$?" != "0" ]; then
     fatal "Unable to get $key from config"
   fi
@@ -195,5 +206,13 @@ version(){
     cat "$VERSION_FILE_PATH"
   else
     echo "unknown"
+  fi
+}
+
+run_cmd() {
+  if [ "$DRY_RUN" == 'true' ]; then
+    echo "$@"
+  else
+    "$@"
   fi
 }

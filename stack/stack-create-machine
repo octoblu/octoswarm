@@ -1,20 +1,5 @@
 #!/bin/bash
 
-script_directory(){
-  local source="${BASH_SOURCE[0]}"
-  local dir=""
-
-  while [ -h "$source" ]; do # resolve $source until the file is no longer a symlink
-    dir="$( cd -P "$( dirname "$source" )" && pwd )"
-    source="$(readlink "$source")"
-    [[ $source != /* ]] && source="$dir/$source" # if $source was a relative symlink, we need to resolve it relative to the path where the symlink file was located
-  done
-
-  dir="$( cd -P "$( dirname "$source" )" && pwd )"
-
-  echo "$dir"
-}
-
 source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 
 debug() {
@@ -56,7 +41,7 @@ create_machine() {
   local machine_id="$1"
   shift
   local options="$@"
-  echo "$(docker-machine create $options "$machine_id")"
+  echo "$(run_cmd docker-machine create $options "$machine_id")"
 }
 
 docker_login() {
@@ -65,7 +50,7 @@ docker_login() {
   local hub_password="$3"
   shift; shift; shift
   local options="$@"
-  docker $(docker-machine config $options "$machine_id") login --username "$hub_username" --password "$hub_password"
+  run_cmd docker $(docker-machine config $options "$machine_id") login --username "$hub_username" --password "$hub_password"
 }
 
 usage(){

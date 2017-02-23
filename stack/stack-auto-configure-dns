@@ -22,21 +22,6 @@ debug() {
   (>&2 echo -e "[${cyan}${SCRIPT_NAME}${no_color}]: $message")
 }
 
-script_directory(){
-  local source="${BASH_SOURCE[0]}"
-  local dir=""
-
-  while [ -h "$source" ]; do # resolve $source until the file is no longer a symlink
-    dir="$( cd -P "$( dirname "$source" )" && pwd )"
-    source="$(readlink "$source")"
-    [[ $source != /* ]] && source="$dir/$source" # if $source was a relative symlink, we need to resolve it relative to the path where the symlink file was located
-  done
-
-  dir="$( cd -P "$( dirname "$source" )" && pwd )"
-
-  echo "$dir"
-}
-
 source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 
 assert_required_params() {
@@ -90,14 +75,13 @@ generate_change_batch(){
   local domain="$2"
   local load_balancer_dns="$3"
   local load_balancer_target_zone="$4"
-  local directory="$(script_directory)"
 
   env \
     CONFIG_PATH="$config_path" \
     DOMAIN="$domain" \
     LOAD_BALANCER_DNS="$load_balancer_dns" \
     ZONE_ID="$load_balancer_target_zone" \
-    $directory/stack-write-route-53-multi-batch-file
+    stack write-route-53-multi-batch-file
 }
 
 get_load_balancer_dns() {

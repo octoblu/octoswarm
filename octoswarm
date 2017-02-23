@@ -1,20 +1,5 @@
 #!/bin/bash
 
-script_directory(){
-  local source="${BASH_SOURCE[0]}"
-  local dir=""
-
-  while [ -h "$source" ]; do # resolve $source until the file is no longer a symlink
-    dir="$( cd -P "$( dirname "$source" )" && pwd )"
-    source="$(readlink "$source")"
-    [[ $source != /* ]] && source="$dir/$source" # if $source was a relative symlink, we need to resolve it relative to the path where the symlink file was located
-  done
-
-  dir="$( cd -P "$( dirname "$source" )" && pwd )"
-
-  echo "$dir"
-}
-
 source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 
 debug() {
@@ -104,8 +89,9 @@ assert_octoswarm_command() {
 }
 
 create_docker_config() {
+  local header
   mkdir -p ~/.docker
-  local header=$(echo "{\"username\":\"${DOCKER_HUB_USERNAME}\",\"password\":\"${DOCKER_HUB_PASSWORD}\"}" | base64 -w 0)
+  header=$(echo "{\"username\":\"${DOCKER_HUB_USERNAME}\",\"password\":\"${DOCKER_HUB_PASSWORD}\"}" | base64 -w 0)
   echo "{ \"HttpHeaders\": { \"X-Registry-Auth\": \"$header\" } }" > ~/.docker/config.json
 }
 
@@ -126,7 +112,7 @@ connect_to_machine() {
   fi
 
   debug "connecting to machine $machine_id"
-  eval $(docker-machine env --shell=bash "$machine_id")
+  eval "$(docker-machine env --shell=bash "$machine_id")"
 }
 
 escape_value_for_sed() {
@@ -140,7 +126,8 @@ get_machine_ids(){
 get_machine_id() {
   local machine_id
   local machine_private_key
-  local machines=$(get_machine_ids)
+  local machines
+  machines=$(get_machine_ids)
   for machine_dir in $machines; do
     machine_private_key="$machine_dir/id_rsa"
     if [ -f "$machine_private_key" ]; then
@@ -184,6 +171,8 @@ validate_machine_id() {
 
 main() {
   local script_name="$1"
+  local second_arg="$2"
+  local third_arg="$3"
 
   case "$script_name" in
     -h | --help | help)
@@ -195,6 +184,15 @@ main() {
       exit 0
       ;;
   esac
+
+  if [ "$script_name" == "stack" ]; then
+    case "$second_arg" in
+      -h | --help | help)
+        stack --help
+        exit 0
+        ;;
+    esac
+  fi
 
   assert_required_env
   assert_octoswarm_command "$script_name"
@@ -209,6 +207,12 @@ main() {
 
   shift
   debug "running script $script_name"
+  if [ "$script_name" == 'docker' \
+      -a "$second_arg" == 'service' \
+      -a "$third_arg" == 'update' ]; then
+    warn "Please don't update a service manually, use 'stack ensure-service <service-name>'"
+    confirm_please
+  fi
   run_script "$script_name" "$@"
   exit $?
 }

@@ -45,18 +45,18 @@ usage(){
 demote_machine() {
   local machine_id="$1"
   debug "demoting machine $machine_id"
-  docker node demote "$machine_id" > /dev/null
+  run_cmd docker node demote "$machine_id" > /dev/null
 }
 
 drain_machine() {
   local machine_id="$1"
-  docker node update --availability drain "$machine_id" > /dev/null
+  run_cmd docker node update --availability drain "$machine_id" > /dev/null
 }
 
 remove_docker_machine() {
   local machine_id="$1"
   debug "removing docker-machine $machine_id"
-  docker-machine rm --force "$machine_id" > /dev/null
+  run_cmd docker-machine rm --force "$machine_id" > /dev/null
 }
 
 remove_config() {

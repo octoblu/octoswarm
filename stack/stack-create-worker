@@ -1,20 +1,5 @@
 #!/bin/bash
 
-script_directory(){
-  local source="${BASH_SOURCE[0]}"
-  local dir=""
-
-  while [ -h "$source" ]; do # resolve $source until the file is no longer a symlink
-    dir="$( cd -P "$( dirname "$source" )" && pwd )"
-    source="$(readlink "$source")"
-    [[ $source != /* ]] && source="$dir/$source" # if $source was a relative symlink, we need to resolve it relative to the path where the symlink file was located
-  done
-
-  dir="$( cd -P "$( dirname "$source" )" && pwd )"
-
-  echo "$dir"
-}
-
 source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 
 debug() {
@@ -83,9 +68,8 @@ main() {
   assert_required_params "$ip_address"
 
   local machine_id="$(swarm-generate-machine-id worker)"
-  local script_dir="$(script_directory)"
 
-  "$script_dir/stack-create-machine" \
+  stack create-machine \
     --ec2-instance-type "$ec2_instance_type" "$machine_id" || fatal 'unable to create machine'
 
   swarm-join-worker --ip-address "$ip_address" --machine-id "$machine_id" || fatal 'unable to join-worker'

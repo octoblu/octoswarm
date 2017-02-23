@@ -1,7 +1,6 @@
 #!/bin/bash
 
 SERVICE_SPEC_CACHE=""
-DRY_RUN="false"
 
 script_directory(){
   local source="${BASH_SOURCE[0]}"
@@ -31,7 +30,6 @@ usage(){
   echo 'Arguments:'
   echo '  -h, --help        print this help text'
   echo '  -v, --version     print the version'
-  echo '  --dry-run         print the docker commands'
   echo 'Environment:'
   echo '  DEBUG             print debug output'
 }
@@ -208,16 +206,8 @@ ensure_network() {
   docker network inspect "$service_name" &> /dev/null
   if [ "$?" != "0" ]; then
     debug "creating network $service_name"
-    run_it docker network create --driver overlay "$service_name"
+    run_cmd docker network create --driver overlay "$service_name"
     sleep 10
-  fi
-}
-
-run_it() {
-  if [ "$DRY_RUN" == 'true' ]; then
-    echo "$@"
-  else
-    $@
   fi
 }
 
@@ -330,7 +320,7 @@ ensure_service() {
 
   ensure_network "$network"
 
-  run_it docker login --username "$DOCKER_HUB_USERNAME" --password "$DOCKER_HUB_PASSWORD" > /dev/null
+  run_cmd docker login --username "$DOCKER_HUB_USERNAME" --password "$DOCKER_HUB_PASSWORD" > /dev/null
   if [ "$isUpdate" == "true" ]; then
     debug 'updating service'
     if [ "$(has_same_docker_image "$service_name" "$image")" != 'true' ]; then
@@ -338,7 +328,7 @@ ensure_service() {
     fi
     opt_env_add="$(get_env_add_options "$service_name" "$envFile")"
     opt_env_rm="$(get_env_rm_options "$service_name" "$envFile")"
-    run_it docker service update \
+    run_cmd docker service update \
       $opt_docker_sock \
       $opt_role \
       $opt_traefik \
@@ -354,7 +344,7 @@ ensure_service() {
     if [ -f "$envFile" ]; then
       opt_env="--env-file $envFile"
     fi
-    run_it docker service create \
+    run_cmd docker service create \
       --name "$service_name" \
       --network "$network" \
       $opt_mode \
@@ -386,10 +376,6 @@ main() {
       -v | --version)
         version
         exit 0
-        ;;
-      --dry-run)
-        DRY_RUN='true'
-        warn "Using --dry-run"
         ;;
       *)
         if [ "${param::1}" == '-' ]; then

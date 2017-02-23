@@ -2,21 +2,6 @@
 
 source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 
-script_directory(){
-  local source="${BASH_SOURCE[0]}"
-  local dir=""
-
-  while [ -h "$source" ]; do # resolve $source until the file is no longer a symlink
-    dir="$( cd -P "$( dirname "$source" )" && pwd )"
-    source="$(readlink "$source")"
-    [[ $source != /* ]] && source="$dir/$source" # if $source was a relative symlink, we need to resolve it relative to the path where the symlink file was located
-  done
-
-  dir="$( cd -P "$( dirname "$source" )" && pwd )"
-
-  echo "$dir"
-}
-
 debug() {
   debug_core "stack" "$@"
 }
@@ -25,11 +10,19 @@ usage(){
   echo 'USAGE: stack <script-name> [options]'
   echo ''
   echo 'Arguments:'
+  echo ''
   echo '  -h, --help         print this help text'
   echo '  -v, --version      print the version'
+  echo '  --dry-run          print the commands instead of running them'
+  echo ''
   echo 'Environment:'
+  echo ''
   echo '  DEBUG              print debug output'
   echo '  OVERRIDE_SAY_YES_OVERRIDE  override "y" on any confirmation prompt'
+  echo 'Commands:'
+  echo ''
+  get_commands
+  echo ''
 }
 
 run_script() {
@@ -74,6 +67,11 @@ main() {
     -v | --version | version)
       version
       exit 0
+      ;;
+    --dry-run)
+      export DRY_RUN='true'
+      shift;
+      script_name="$1"
       ;;
   esac
 

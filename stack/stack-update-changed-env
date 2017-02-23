@@ -82,7 +82,7 @@ update_single_env() {
 }
 
 usage(){
-  echo 'USAGE: stack-update-changed-env [REVISION]'
+  echo 'USAGE: [DEPRECATED] stack-update-changed-env [REVISION]'
   echo ''
   echo 'Arguments:'
   echo '  -h, --help         print this help text'
@@ -128,6 +128,8 @@ main() {
   if [ -z "$revision" ]; then
     revision="HEAD"
   fi
+
+  warn "Please use 'stack ensure-service <service-name>'"
 
   for file in $(get_changed_env "$revision"); do
     local operation="$(get_operation "$revision" "$file")"

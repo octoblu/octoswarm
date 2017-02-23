@@ -1,20 +1,5 @@
 #!/bin/bash
 
-script_directory(){
-  local source="${BASH_SOURCE[0]}"
-  local dir=""
-
-  while [ -h "$source" ]; do # resolve $source until the file is no longer a symlink
-    dir="$( cd -P "$( dirname "$source" )" && pwd )"
-    source="$(readlink "$source")"
-    [[ $source != /* ]] && source="$dir/$source" # if $source was a relative symlink, we need to resolve it relative to the path where the symlink file was located
-  done
-
-  dir="$( cd -P "$( dirname "$source" )" && pwd )"
-
-  echo "$dir"
-}
-
 source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 
 debug() {
@@ -112,7 +97,7 @@ main() {
 
   local cert_arn='arn:aws:iam::822069890720:server-certificate/star_octoblu_com_exp_102018'
 
-  aws elb create-load-balancer \
+  run_cmd aws elb create-load-balancer \
     --load-balancer-name "$load_balancer_name" \
     --listeners \
       "Protocol=HTTP,LoadBalancerPort=80,InstanceProtocol=HTTP,InstancePort=80" \
@@ -122,15 +107,14 @@ main() {
     --subnets "${subnets[@]/\,/}" \
     --security-groups "${security_groups[@]/\,/}" > /dev/null || fatal 'Unable to create a load balancer'
 
-  local elb_attr_file="file://$(script_directory)/../assets/elb-default-attributes.json"
-  aws elb modify-load-balancer-attributes \
+  local elb_attr_file="file:///usr/src/app/assets/elb-default-attributes.json"
+  run_cmd aws elb modify-load-balancer-attributes \
     --load-balancer-name "$load_balancer_name" \
     --load-balancer-attributes "$elb_attr_file" > /dev/null || fatal 'Unable to modify load balancer attributes'
 
-
   local health_check='Target=HTTP:8080/ping,Interval=30,UnhealthyThreshold=2,HealthyThreshold=2,Timeout=5'
 
-  aws elb configure-health-check \
+  run_cmd aws elb configure-health-check \
     --load-balancer-name "$load_balancer_name" \
     --health-check "$health_check" > /dev/null || fatal 'Unable to create the health-check'
 }
