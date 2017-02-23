@@ -1,10 +1,8 @@
 #!/bin/bash
 
-source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
+SCRIPT_NAME="stack-create-elb"
 
-debug() {
-  debug_core "stack-create-elb" "$@"
-}
+source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 
 assert_required_params() {
   local load_balancer_name="$1"
@@ -25,7 +23,7 @@ assert_required_params() {
 }
 
 usage(){
-  echo 'USAGE: stack-create-elb <load-balancer-name>'
+  echo "USAGE: $SCRIPT_NAME <load-balancer-name>"
   echo ''
   echo 'Arguments:'
   echo '  -h, --help                       print this help text'

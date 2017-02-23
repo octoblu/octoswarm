@@ -1,13 +1,11 @@
 #!/bin/bash
 
+SCRIPT_NAME="stack-create-cluster"
+
 source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 
-debug() {
-  debug_core "stack-ensure-cluster" "$@"
-}
-
 usage(){
-  echo 'USAGE: stack-create-cluster'
+  echo "USAGE: $SCRIPT_NAME"
   echo 'Description: bootstrap a cluster'
   echo ''
   echo 'Arguments:'

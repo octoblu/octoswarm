@@ -1,13 +1,11 @@
 #!/bin/bash
 
+SCRIPT_NAME="stack-ensure-cluster"
+
 source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 
-debug() {
-  debug_core "stack-ensure-cluster" "$@"
-}
-
 usage(){
-  echo 'USAGE: stack-ensure-cluster'
+  echo "USAGE: $SCRIPT_NAME"
   echo 'Description: ensure a cluster is up-to-date'
   echo ''
   echo 'Arguments:'

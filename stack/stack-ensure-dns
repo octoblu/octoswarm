@@ -2,26 +2,6 @@
 
 SCRIPT_NAME='stack-auto-configure-dns'
 
-# Utilities
-
-matches_debug() {
-  if [ -z "$DEBUG" ]; then
-    return 1
-  fi
-  if [[ $SCRIPT_NAME == "$DEBUG" ]]; then
-    return 0
-  fi
-  return 1
-}
-
-debug() {
-  local cyan='\033[0;36m'
-  local no_color='\033[0;0m'
-  local message="$@"
-  matches_debug || return 0
-  (>&2 echo -e "[${cyan}${SCRIPT_NAME}${no_color}]: $message")
-}
-
 source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 
 assert_required_params() {

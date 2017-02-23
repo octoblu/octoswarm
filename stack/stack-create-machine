@@ -1,10 +1,8 @@
 #!/bin/bash
 
-source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
+SCRIPT_NAME="stack-create-machine"
 
-debug() {
-  debug_core "stack-create-machine" "$@"
-}
+source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 
 assert_required_params(){
   local machine_id="$1"
@@ -54,7 +52,7 @@ docker_login() {
 }
 
 usage(){
-  echo 'USAGE: stack-create-machine'
+  echo "USAGE: $SCRIPT_NAME" 
   echo ''
   echo 'Arguments:'
   echo '  -h, --help               print this help text'

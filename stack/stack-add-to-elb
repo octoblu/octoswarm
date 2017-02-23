@@ -1,10 +1,8 @@
 #!/bin/bash
 
-source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
+SCRIPT_NAME="stack-add-to-elb"
 
-debug() {
-  debug_core "stack-add-to-elb" "$@"
-}
+source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 
 assert_required_params() {
   local machine_id="$1"
@@ -75,7 +73,7 @@ register_instance() {
 }
 
 usage(){
-  echo 'USAGE: stack-add-to-elb <machine-id> <load-balancer-name>'
+  echo "USAGE: $SCRIPT_NAME <machine-id> <load-balancer-name>"
   echo ''
   echo 'Arguments:'
   echo '  -h, --help             print this help text'

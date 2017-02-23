@@ -1,10 +1,8 @@
 #!/bin/bash
 
-source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
+SCRIPT_NAME="stack-remove-machine"
 
-debug() {
-  debug_core "stack-remove-machine" "$@"
-}
+source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 
 assert_required_params() {
   local machine_id="$1"
@@ -15,7 +13,7 @@ assert_required_params() {
 }
 
 usage(){
-  echo 'USAGE: stack remove-machine <machine-id>'
+  echo "USAGE: $SCRIPT_NAME <machine-id>"
   echo ''
   echo 'Arguments:'
   echo '  -h, --help                       print this help text'
