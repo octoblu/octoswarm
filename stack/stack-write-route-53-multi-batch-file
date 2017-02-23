@@ -2,54 +2,74 @@
 
 var fs = require('fs')
 
-var CONFIG_PATH       = process.env.CONFIG_PATH
-var DOMAIN            = process.env.DOMAIN
-var LOAD_BALANCER_DNS = process.env.LOAD_BALANCER_DNS
-var ZONE_ID           = process.env.ZONE_ID
+class StackRoute53 {
+  constructor(argv) {
+    this.options = {
+      configPath:      this._getRequiredEnv('CONFIG_PATH'),
+      domain:          this._getRequiredEnv('DOMAIN'),
+      loadBalancerDns: this._getRequiredEnv('LOAD_BALANCER_DNS'),
+      zoneId:          this._getRequiredEnv('ZONE_ID'),
+    }
+  }
 
-if(!CONFIG_PATH)       throw new Error('Missing env CONFIG_PATH')
-if(!DOMAIN)            throw new Error('Missing env DOMAIN')
-if(!LOAD_BALANCER_DNS) throw new Error('Missing env LOAD_BALANCER_DNS')
-if(!ZONE_ID)           throw new Error('Missing env ZONE_ID')
+  run() {
+    const serviceRoutes = this._serviceRoutes()
+    const srvRoutes = this._srvRoutes()
 
-var clusterJSON = JSON.parse(fs.readFileSync(CONFIG_PATH))
-var srvTemplate = require('../assets/srv-template.json')
+    const routes = {
+      Comment: "Stack Update DNS",
+      Changes: [...serviceRoutes, ...srvRoutes],
+    }
+    console.log(JSON.stringify(routes, null, 2))
+    process.exit(0)
+  }
 
-var routes = {
-  Comment: "Stack Update DNS",
-  Changes: []
+  _getRequiredEnv(envName) {
+    if (process.env[envName]) return process.env[envName]
+    throw new Error(`Missing env: ${envName}`)
+  }
+
+  _serviceRoutes() {
+    const changes = []
+
+    const clusterJSON = JSON.parse(fs.readFileSync(this.options.configPath))
+    clusterJSON.services.forEach((service) => {
+      if (!(service.traefik && service.traefik.host)) return
+
+      changes.push({
+        Action: 'UPSERT',
+        ResourceRecordSet: {
+          Name: service.traefik.host,
+          Type: 'A',
+          AliasTarget: {
+            HostedZoneId: this.options.zoneId,
+            DNSName:      this.options.loadBalancerDns,
+            EvaluateTargetHealth: false,
+          }
+        }
+      })
+    })
+
+    return changes
+  }
+
+  _srvRoutes() {
+    const clusterJSON = JSON.parse(fs.readFileSync(this.options.configPath))
+    const srvRecords = clusterJSON.srvRecords || []
+
+    return srvRecords.map((record) => {
+      return {
+        Action: 'UPSERT',
+        ResourceRecordSet: {
+          Name: `${record.subdomain}.${this.options.domain}`,
+          Type: 'SRV',
+          TTL: 300,
+          ResourceRecords: record.values.map((value) => ({ Value: value })),
+        },
+      }
+    })
+  }
 }
 
-clusterJSON.services.forEach(function(service){
-  if (!(service.traefik && service.traefik.host)) return
-
-  routes.Changes.push({
-    Action: 'UPSERT',
-    ResourceRecordSet: {
-      Name: service.traefik.host,
-      Type: 'A',
-      AliasTarget: {
-        HostedZoneId: ZONE_ID,
-        DNSName: LOAD_BALANCER_DNS,
-        EvaluateTargetHealth: false,
-      }
-    }
-  })
-})
-
-srvTemplate.forEach(function(record){
-  routes.Changes.push({
-    Action: 'UPSERT',
-    ResourceRecordSet: {
-      Name: record.subdomain + '.' + DOMAIN,
-      Type: 'SRV',
-      TTL: 300,
-      ResourceRecords: [{
-        Value: record.value
-      }]
-    }
-  })
-})
-
-console.log(JSON.stringify(routes, null, 2))
-process.exit(0)
+const stackRoute53 = new StackRoute53()
+stackRoute53.run()

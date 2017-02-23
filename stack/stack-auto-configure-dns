@@ -8,7 +8,7 @@ matches_debug() {
   if [ -z "$DEBUG" ]; then
     return 1
   fi
-  if [[ $SCRIPT_NAME == $DEBUG ]]; then
+  if [[ $SCRIPT_NAME == "$DEBUG" ]]; then
     return 0
   fi
   return 1
@@ -28,29 +28,29 @@ assert_required_params() {
   local domain="$1"
   local zone_name="$2"
 
-  if [ -n "$domain" -a -n "$zone_name" ]; then
+  if [ -n "$domain" ] && [ -n "$zone_name" ] && [ "$domain" != "null" ] && [ "$zone_name" != "null" ]; then
     return 0
   fi
 
   usage
 
-  if [ -z "$domain" ]; then
-    echo "Missing <domain> argument"
+  if [ -z "$domain" ] || [ "$domain" == "null" ]; then
+    echo "Missing .domain property in the cluster.json"
   fi
 
-  if [ -z "$zone_name" ]; then
-    echo "Missing <zone-name> argument"
+  if [ -z "$zone_name"  ] || [ "$zone_name" == "null" ]; then
+    echo "Missing .zoneName property in the cluster.json"
   fi
 
   exit 1
 }
 
 usage(){
-  echo "USAGE: ${SCRIPT_NAME} <domain> <zone-name> [/path/to/cluster.json]"
+  echo "USAGE: ${SCRIPT_NAME} [OPTIONS] [/path/to/cluster.json]"
   echo ''
   echo 'Description: will setup A & SRV records.'
   echo ''
-  echo "Example: ${SCRIPT_NAME} \"dev.octo.space\" \"octo.space.\""
+  echo "Example: ${SCRIPT_NAME}"
   echo ''
   echo 'Arguments:'
   echo '  -h, --help       print this help text'
@@ -84,11 +84,17 @@ generate_change_batch(){
     stack write-route-53-multi-batch-file
 }
 
+get_domain() {
+  local config_path="$1"
+  jq --raw-output '.domain' "$config_path"
+}
+
 get_load_balancer_dns() {
   local load_balancer_name="$1"
   local load_balancers=( $(get_load_balancers "$load_balancer_name") )
   for load_balancer in "${load_balancers[@]}"; do
-    local load_balancer_dns="$(echo "$load_balancer" | jq -r '.CanonicalHostedZoneName')"
+    local load_balancer_dns
+    load_balancer_dns="$(echo "$load_balancer" | jq -r '.CanonicalHostedZoneName')"
     if [ -n "$load_balancer_dns" ]; then
       echo "$load_balancer_dns"
       return 0
@@ -99,8 +105,9 @@ get_load_balancer_dns() {
 
 get_load_balancer_name(){
   local config_path="$1"
+  local elb_count
 
-  local elb_count="$(jq '.managers.elbs | length' "$config_path")"
+  elb_count="$(jq '.managers.elbs | length' "$config_path")"
   if [ "$elb_count" != "1" ]; then
     echo "Found multiple elbs, cowardly refusing to do anything: "
     echo "$(jq '.managers.elbs' "$config_path")"
@@ -116,7 +123,8 @@ get_load_balancer_target_zone() {
   local load_balancer_name="$1"
   local load_balancers=( $(get_load_balancers "$load_balancer_name") )
   for load_balancer in "${load_balancers[@]}"; do
-    local load_balancer_target_zone="$(echo "$load_balancer" | jq -r '.CanonicalHostedZoneNameID')"
+    local load_balancer_target_zone
+    load_balancer_target_zone="$(echo "$load_balancer" | jq -r '.CanonicalHostedZoneNameID')"
     if [ -n "$load_balancer_target_zone" ]; then
       echo "$load_balancer_target_zone"
       return 0
@@ -137,17 +145,27 @@ get_route53_hosted_zone(){
   | jq ".HostedZones | map(select(.Name == \"$domain\"))[0].Id"
 }
 
+get_zone_name() {
+  local config_path="$1"
+  jq --raw-output '.zoneName' "$config_path"
+}
+
 # Primary execution
 
 main() {
+  local change_batch
   local config_path
   local domain
-  local zone_name
   local dry_run='false'
+  local load_balancer_dns
+  local load_balancer_name
+  local load_balancer_target_zone
+  local route53_hosted_zone
+  local tmpfile
+  local zone_name
 
   while [ "$1" != "" ]; do
     local param="$1"
-    local value="$2"
     case "$param" in
       -h | --help)
         usage
@@ -172,19 +190,10 @@ main() {
           usage
           exit 1
         fi
-        if [ -z "$domain" ]; then
-          domain="$param"
-        elif [ -z "$zone_name" ]; then
-          zone_name="$param"
-        elif [ -z "$config_path" ]; then
+        # Set main arguments
+        if [ -z "$config_path" ]; then
           config_path="$param"
         fi
-        # Set main arguments
-        # if [ -z "$main_arg" ]; then
-        #   main_arg="$param"
-        # elif [ -z "$main_arg_2"]; then
-        #   main_arg_2="$param"
-        # fi
         ;;
     esac
     shift
@@ -198,28 +207,32 @@ main() {
     config_path="$PWD/cluster.json"
   fi
 
+  domain="$(get_domain "$config_path")"
+  zone_name="$(get_zone_name "$config_path")"
+
   assert_required_params "$domain" "$zone_name"
 
-  local load_balancer_name="$(get_load_balancer_name "$config_path")"
-  local load_balancer_dns="$(get_load_balancer_dns "$load_balancer_name")"
-  local load_balancer_target_zone="$(get_load_balancer_target_zone "$load_balancer_name")"
-  local route53_hosted_zone=$(get_route53_hosted_zone "$zone_name")
+  load_balancer_name="$(get_load_balancer_name "$config_path")"
+  load_balancer_dns="$(get_load_balancer_dns "$load_balancer_name")"
+  load_balancer_target_zone="$(get_load_balancer_target_zone "$load_balancer_name")"
+  route53_hosted_zone=$(get_route53_hosted_zone "$zone_name")
+
   if [ -z "$route53_hosted_zone" -o "$route53_hosted_zone" == "null" ]; then
     echo "Could not find route53 hosted zone for: $domain"
     exit 1
   fi
 
-  local change_batch="$(generate_change_batch "$config_path" "$domain" "$load_balancer_dns" "$load_balancer_target_zone")"
+  change_batch="$(generate_change_batch "$config_path" "$domain" "$load_balancer_dns" "$load_balancer_target_zone")"
 
   if [ "$dry_run" == "true" ]; then
     echo "$change_batch"
     exit 0
   fi
 
-  local tmpfile="$(mktemp)"
+  tmpfile="$(mktemp)"
   echo "$change_batch" > "$tmpfile"
 
-  echo aws route53 \
+  aws route53 \
     change-resource-record-sets \
     --hosted-zone-id "$route53_hosted_zone" \
     --change-batch "file://$tmpfile" || fatal 'Unable to create route'
