@@ -36,14 +36,19 @@ get_pingdom_tags() {
   local parent_tags="$(get_config_val '.pingdom.tags')"
   local service_tags="$(get_service_val "$service" '.pingdom.tags')"
   local search_tags="$(get_service_full_name "$service")"
+  local stack_env_name="$(get_config_val '.stackEnvName')"
+  local stack_name="$(get_config_val '.stackName')"
 
+  if [ "$parent_tags" == "null" ]; then
+    parent_tags=""
+  fi
   if [ "$parent_tags" != "" ]; then
     parent_tags="$parent_tags,"
   fi
   if [ "$service_tags" != "" ]; then
     service_tags="$service_tags,"
   fi
-  echo "$parent_tags$service_tags$search_tags"
+  echo "$stack_env_name,$stack_name,$stack_env_name-$stack_name,$parent_tags$service_tags$search_tags"
 }
 
 add_pingdom_check() {
