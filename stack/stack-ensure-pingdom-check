@@ -22,6 +22,16 @@ assert_required_params() {
   fi
 }
 
+get_pingdom_contact_ids() {
+  local service="$1"
+  local contact_ids
+  local pagerduty="$(get_service_val "$service" '.pingdom.pagerduty')"
+  if [ "$pagerduty" != "false" ]; then
+    contact_ids="11058966"
+  fi
+  echo "$contact_ids"
+}
+
 get_pingdom_path() {
   local service="$1"
   local path="$(get_service_val "$service" '.pingdom.path')"
@@ -29,6 +39,28 @@ get_pingdom_path() {
     path="/healthcheck"
   fi
   echo "$path"
+}
+
+get_pingdom_host() {
+  local service="$1"
+  local host="$(get_service_val "$service" '.traefik.host')"
+  local pingdom_host="$(get_service_val "$service" '.pingdom.host')"
+  if [ "$pingdom_host" != "" ]; then
+    host="$pingdom_host"
+  fi
+  echo "$host"
+}
+
+get_pingdom_should_contain() {
+  local service="$1"
+  local should_contain="$(get_service_val "$service" '.pingdom.shouldContain')"
+  if [ "$should_contain" == "" ]; then
+    should_contain='{"online":true}'
+  fi
+  if [ "$should_contain" == "false" ]; then
+    should_contain=""
+  fi
+  echo "$should_contain"
 }
 
 get_pingdom_tags() {
@@ -55,8 +87,6 @@ add_pingdom_check() {
   local service="$1"
   local check_id="$(find_pingdom_check "$service")"
 
-  echo "check_id=$check_id"
-
   if [ "$check_id" == "" ]; then
     create_pingdom_check "$service"
   else
@@ -64,13 +94,52 @@ add_pingdom_check() {
   fi
 }
 
-create_pingdom_check() {
-  local service="$1"
-  local exit_code
+get_pingdom_check_options() {
   local name="$(get_service_full_name "$service")"
   local path="$(get_pingdom_path "$service")"
   local tags="$(get_pingdom_tags "$service")"
-  local host="$(get_service_val "$service" '.traefik.host')"
+  local host="$(get_pingdom_host "$service")"
+  local auth="$(get_service_val "$service" '.pingdom.auth')"
+  local should_contain="$(get_pingdom_should_contain "$service")"
+  local contact_ids="$(get_pingdom_contact_ids "$service")"
+
+  local options
+  options="$options --data paused=false"
+  options="$options --data resolution=1"
+  options="$options --data encryption=true"
+  options="$options --data sendtoemail=true"
+  options="$options --data sendnotificationwhendown=5"
+  options="$options --data notifywhenbackup=true"
+  options="$options --data use_legacy_notifications=true"
+
+  if [ "$contact_ids" != "" ]; then
+    options="$options --data contactids=$contact_ids"
+  fi
+  if [ "$should_contain" != "" ]; then
+    options="$options --data shouldcontain=$should_contain"
+  fi
+  if [ "$auth" != "" ]; then
+    options="$options --data auth=$auth"
+  fi
+  if [ "$name" != "" ]; then
+    options="$options --data name=$name"
+  fi
+  if [ "$host" != "" ]; then
+    options="$options --data host=$host"
+  fi
+  if [ "$tags" != "" ]; then
+    options="$options --data tags=$tags"
+  fi
+  if [ "$path" != "" ]; then
+    options="$options --data url=$path"
+  fi
+
+  echo "$options"
+}
+
+create_pingdom_check() {
+  local service="$1"
+  local pingdom_check_options="$(get_pingdom_check_options "$service")"
 
   curl \
     --silent \
@@ -78,19 +147,7 @@ create_pingdom_check() {
     --header "App-Key: $PINGDOM_APP_KEY" \
     --user "$PINGDOM_USERNAME:$PINGDOM_PASSWORD" \
     --data 'type=http' \
-    --data 'paused=false' \
-    --data 'resolution=1' \
-    --data 'encryption=true' \
-    --data 'contactids=11058966,10866214' \
-    --data 'sendtoemail=true' \
-    --data 'sendnotificationwhendown=5' \
-    --data 'notifywhenbackup=true' \
-    --data 'shouldcontain={"online":true}' \
-    --data 'use_legacy_notifications=true' \
-    --data "name=$name" \
-    --data "host=$host" \
-    --data "tags=$tags" \
-    --data "url=$path" \
+    $pingdom_check_options \
     https://api.pingdom.com/api/2.0/checks
 }
 
@@ -152,29 +209,14 @@ update_pingdom_check() {
   local service="$1"
   local check_id="$2"
 
-  local name="$(get_service_full_name "$service")"
-  local path="$(get_pingdom_path "$service")"
-  local tags="$(get_pingdom_tags "$service")"
-  local host="$(get_service_val "$service" '.traefik.host')"
+  local pingdom_check_options="$(get_pingdom_check_options "$service")"
 
   curl \
     --silent \
     --request PUT \
     --header "App-Key: $PINGDOM_APP_KEY" \
     --user "$PINGDOM_USERNAME:$PINGDOM_PASSWORD" \
-    --data 'paused=false' \
-    --data 'resolution=1' \
-    --data 'encryption=true' \
-    --data 'contactids=11058966,10866214' \
-    --data 'sendtoemail=true' \
-    --data 'sendnotificationwhendown=5' \
-    --data 'notifywhenbackup=true' \
-    --data 'shouldcontain={"online":true}' \
-    --data 'use_legacy_notifications=true' \
-    --data "name=$name" \
-    --data "host=$host" \
-    --data "tags=$tags" \
-    --data "url=$path" \
+    $pingdom_check_options \
     "https://api.pingdom.com/api/2.0/checks/$check_id"
 }
 
