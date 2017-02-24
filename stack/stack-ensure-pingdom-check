@@ -143,8 +143,6 @@ remove_pingdom_check() {
   local service="$1"
   local check_id="$(find_pingdom_check "$service")"
 
-  echo "check_id=$check_id"
-
   if [ "$check_id" == "" ]; then
     pause_pingdom_check "$service" "$check_id"
   fi
