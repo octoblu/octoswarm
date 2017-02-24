@@ -337,6 +337,7 @@ ensure_service() {
     run_cmd docker service update \
       $opt_docker_sock \
       $opt_role \
+      $opt_replicas \
       $opt_traefik \
       $opt_beekeeper \
       $opt_with_registry_auth \

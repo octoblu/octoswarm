@@ -136,7 +136,6 @@ main() {
   local change_batch
   local config_path
   local domain
-  local dry_run='false'
   local load_balancer_dns
   local load_balancer_name
   local load_balancer_target_zone
@@ -155,14 +154,9 @@ main() {
         version
         exit 0
         ;;
-      # Arg with value
-      # -x | --example)
-      #   example="$value"
-      #   shift
-      #   ;;
-      # Arg without value
       -n | --dry-run)
-        dry_run='true'
+        warn "Using '--dry-run'"
+        export DRY_RUN='true'
         ;;
       *)
         if [ "${param::1}" == '-' ]; then
@@ -204,15 +198,14 @@ main() {
 
   change_batch="$(generate_change_batch "$config_path" "$domain" "$load_balancer_dns" "$load_balancer_target_zone")"
 
-  if [ "$dry_run" == "true" ]; then
+  if [ "$DRY_RUN" == "true" ]; then
     echo "$change_batch"
-    exit 0
   fi
 
   tmpfile="$(mktemp)"
   echo "$change_batch" > "$tmpfile"
 
-  aws route53 \
+  run_cmd aws route53 \
     change-resource-record-sets \
     --hosted-zone-id "$route53_hosted_zone" \
     --change-batch "file://$tmpfile" || fatal 'Unable to create route'
