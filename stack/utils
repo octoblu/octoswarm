@@ -212,6 +212,15 @@ get_config_array() {
   cat "$STACK_CONFIG_PATH" | jq --compact-output "$key"
 }
 
+get_service_full_name() {
+  local service="$1"
+  local name="$(get_service_val "$service" '.name')"
+  local stack_env_name="$(get_config_val '.stackEnvName')"
+  local stack_name="$(get_config_val '.stackName')"
+
+  echo "$stack_env_name-$stack_name-$name"
+}
+
 is_stack_empty() {
   if [ -d "$MACHINE_STORAGE_PATH/machines" ]; then
     return 0

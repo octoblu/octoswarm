@@ -20,16 +20,11 @@ assert_required_config() {
   require_config_value '.services[]'
 }
 
-get_service_name() {
-  local service="$1"
-  echo "$service" | jq -r '.name'
-}
-
 ensure_pingdoms() {
   debug 'ensure pingdoms'
   local services=( $(get_config_array '.services[]') )
   for service in "${services[@]}"; do
-    local name="$(get_service_name "$service")"
+    local name="$(get_service_val "$service" '.name')"
     stack ensure-pingdom-check "$name" || fatal "unable to ensure service $name"
   done
 }

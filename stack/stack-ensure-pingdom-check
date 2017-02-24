@@ -35,34 +35,57 @@ get_pingdom_tags() {
   local service="$1"
   local parent_tags="$(get_config_val '.pingdom.tags')"
   local service_tags="$(get_service_val "$service" '.pingdom.tags')"
-  if [ "$parent_tags" != "" ] && [ "$service_tags" != "" ]; then
+  local search_tags="$(get_service_full_name "$service")"
+
+  if [ "$parent_tags" != "" ]; then
     parent_tags="$parent_tags,"
   fi
-  echo "$parent_tags$service_tags"
+  if [ "$service_tags" != "" ]; then
+    service_tags="$service_tags,"
+  fi
+  echo "$parent_tags$service_tags$search_tags"
 }
 
 add_pingdom_check() {
   local service="$1"
-  local name="$(get_service_val "$service" '.name')"
+  local check_id="$(find_pingdom_check "$service")"
+
+  echo "check_id=$check_id"
+
+  if [ "$check_id" == "" ]; then
+    create_pingdom_check "$service"
+  else
+    update_pingdom_check "$service" "$check_id"
+  fi
+}
+
+create_pingdom_check() {
+  local service="$1"
+  local exit_code
+  local name="$(get_service_full_name "$service")"
   local path="$(get_pingdom_path "$service")"
   local tags="$(get_pingdom_tags "$service")"
   local host="$(get_service_val "$service" '.traefik.host')"
 
   curl \
-    --fail \
+    --silent \
     --request POST \
     --header "App-Key: $PINGDOM_APP_KEY" \
     --user "$PINGDOM_USERNAME:$PINGDOM_PASSWORD" \
     --data 'type=http' \
+    --data 'paused=false' \
     --data 'resolution=1' \
     --data 'encryption=true' \
     --data 'contactids=11058966,10866214' \
     --data 'sendtoemail=true' \
-    --data 'legacy_notifications=true' \
+    --data 'sendnotificationwhendown=5' \
+    --data 'notifywhenbackup=true' \
+    --data 'shouldcontain={"online":true}' \
+    --data 'use_legacy_notifications=true' \
     --data "name=$name" \
-    --data "host=$hostname" \
+    --data "host=$host" \
     --data "tags=$tags" \
-    --data "path=$path" \
+    --data "url=$path" \
     https://api.pingdom.com/api/2.0/checks
 }
 
@@ -76,6 +99,80 @@ ensure_pingdom_check() {
   if [ "$check" == "false" ]; then
     remove_pingdom_check "$service"
   fi
+}
+
+find_pingdom_check() {
+  local service="$1"
+  local search_tags="$(get_service_full_name "$service")"
+
+  local result="$(curl \
+    --silent \
+    --request GET \
+    --header "App-Key: $PINGDOM_APP_KEY" \
+    --user "$PINGDOM_USERNAME:$PINGDOM_PASSWORD" \
+    "https://api.pingdom.com/api/2.0/checks?limit=1&tags=$search_tags")"
+
+  local check_id="$(echo "$result" | jq --raw-output '.checks[0].id')"
+
+  if [ "$check_id" == "null" ]; then
+    check_id=""
+  fi
+
+  echo $check_id
+}
+
+pause_pingdom_check() {
+  local service="$1"
+  local check_id="$2"
+
+  curl \
+    --silent \
+    --request PUT \
+    --header "App-Key: $PINGDOM_APP_KEY" \
+    --user "$PINGDOM_USERNAME:$PINGDOM_PASSWORD" \
+    --data 'paused=true' \
+    "https://api.pingdom.com/api/2.0/checks/$check_id"
+}
+
+remove_pingdom_check() {
+  local service="$1"
+  local check_id="$(find_pingdom_check "$service")"
+
+  echo "check_id=$check_id"
+
+  if [ "$check_id" == "" ]; then
+    pause_pingdom_check "$service" "$check_id"
+  fi
+}
+
+update_pingdom_check() {
+  local service="$1"
+  local check_id="$2"
+
+  local name="$(get_service_full_name "$service")"
+  local path="$(get_pingdom_path "$service")"
+  local tags="$(get_pingdom_tags "$service")"
+  local host="$(get_service_val "$service" '.traefik.host')"
+
+  curl \
+    --silent \
+    --request PUT \
+    --header "App-Key: $PINGDOM_APP_KEY" \
+    --user "$PINGDOM_USERNAME:$PINGDOM_PASSWORD" \
+    --data 'paused=false' \
+    --data 'resolution=1' \
+    --data 'encryption=true' \
+    --data 'contactids=11058966,10866214' \
+    --data 'sendtoemail=true' \
+    --data 'sendnotificationwhendown=5' \
+    --data 'notifywhenbackup=true' \
+    --data 'shouldcontain={"online":true}' \
+    --data 'use_legacy_notifications=true' \
+    --data "name=$name" \
+    --data "host=$host" \
+    --data "tags=$tags" \
+    --data "url=$path" \
+    "https://api.pingdom.com/api/2.0/checks/$check_id"
 }
 
 main() {
@@ -119,7 +216,6 @@ main() {
     if [ "$service_name" == "$_service_name" ]; then
       ensure_pingdom_check "$service"
       exit_code=$?
-      SERVICE_SPEC_CACHE=""
       exit $exit_code
     fi
   done
