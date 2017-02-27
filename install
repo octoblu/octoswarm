@@ -104,6 +104,7 @@ main() {
   install octodocker
   install octomachine
   install octobash
+  install octofish
 }
 
 main "$@"

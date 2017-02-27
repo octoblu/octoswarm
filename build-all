@@ -6,6 +6,9 @@ ensure_projects() {
   if [ ! -d "$PROJECTS_DIR/octobash" ]; then
     hub clone octoblu/octobash "$PROJECTS_DIR/octobash"
   fi
+  if [ ! -d "$PROJECTS_DIR/octofish" ]; then
+    hub clone octoblu/octobash "$PROJECTS_DIR/octofish"
+  fi
   if [ ! -d "$PROJECTS_DIR/octodocker" ]; then
     hub clone octoblu/octodocker "$PROJECTS_DIR/octodocker"
   fi
@@ -30,7 +33,8 @@ build_projects() {
   && build "octodocker" \
   && build "octomachine" \
   && build "octostack" \
-  && build "octobash"
+  && build "octobash" \
+  && build "octofish"
 }
 
 install() {
@@ -44,7 +48,8 @@ install_projects() {
   && install "octodocker" \
   && install "octomachine" \
   && install "octoswarm" \
-  && install "octostack"
+  && install "octostack" \
+  && install "octofish"
 }
 
 main() {
