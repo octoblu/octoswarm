@@ -197,6 +197,7 @@ ensure_network() {
   if [ "$?" != "0" ]; then
     debug "creating network $service_name"
     run_cmd docker network create --driver overlay "$service_name"
+    # sleepy time for docker
     sleep 10
   fi
 }
@@ -234,7 +235,7 @@ ensure_service() {
   local envFile
   local beekeeper
   service_name="$(echo "$service" | jq -r '.name')"
-  beekeeper="$(echo "$service" | jq -r '.beekeeper')"
+  beekeeper="$(echo "$service" | jq -r '.beekeeper.update')"
   count="$(echo "$service" | jq -r '.count')"
   docker_repo="$(echo "$service" | jq -r '.docker.repo')"
   network="$(echo "$service" | jq -r '.docker.network')"
@@ -269,6 +270,9 @@ ensure_service() {
   fi
   if [ "$mode" == "null" ]; then
     mode="replicated"
+  fi
+  if [ "$beekeeper" == "null" ] || [ "$beekeeper" == "" ]; then
+    beekeeper="false"
   fi
   if [ "$mode" == "replicated" ]; then
     if [ "$(has_same_replicas "$service_name" "$count")" == 'false' ]; then
@@ -313,7 +317,7 @@ ensure_service() {
     opt_traefik="$labelFlag traefik.frontend.rule=${frontendRule} $labelFlag traefik.port=80 $labelFlag traefik.docker.network=traefik"
   fi
   if [ "$logentries" == "true" -a -n "$OCTOSWARM_LOGENTRIES_TOKEN" ]; then
-    opt_logentries="--log-driver logentries --log-driver logentries-token=$OCTOSWARM_LOGENTRIES_TOKEN"
+    opt_logentries="--log-driver logentries --log-opt logentries-token=$OCTOSWARM_LOGENTRIES_TOKEN"
   fi
 
   for port in $publish; do
@@ -367,6 +371,8 @@ ensure_service() {
       "$image" \
         $opt_run
   fi
+  # sleepy time for docker
+  sleep 10
 }
 
 main() {
