@@ -13,6 +13,7 @@ LABEL io.whalebrew.config.environment='[ \
   "DEBUG", \
   "SAY_YES", \
   "OCTOSWARM_LOGENTRIES_TOKEN", \
+  "OCTOSWARM_GITHUB_API_TOKEN", \
   "PINGDOM_APP_KEY", \
   "PINGDOM_USERNAME", \
   "PINGDOM_PASSWORD", \

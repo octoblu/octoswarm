@@ -1,5 +1,7 @@
 #!/bin/bash
 
+SUPPORTED_VERSION="3.0.0"
+
 source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 
 debug() {
@@ -61,6 +63,10 @@ assert_required_env() {
     fatal 'Missing required env OCTOSWARM_LOGENTRIES_TOKEN'
   fi
 
+  if [ -z "$OCTOSWARM_GITHUB_API_TOKEN" ]; then
+    fatal 'Missing required env OCTOSWARM_GITHUB_API_TOKEN'
+  fi
+
   if [ -z "$PINGDOM_APP_KEY" ]; then
     fatal 'Missing required env PINGDOM_APP_KEY'
   fi
@@ -71,6 +77,24 @@ assert_required_env() {
 
   if [ -z "$PINGDOM_PASSWORD" ]; then
     fatal 'Missing required env PINGDOM_PASSWORD'
+  fi
+}
+
+assert_required_stack_version() {
+  local stack_version="$1"
+
+  if [ "$stack_version" != "$SUPPORTED_VERSION" ]; then
+    fatal "$stack_version is not supported. $SUPPORTED_VERSION is required, exiting."
+  fi
+}
+
+assert_latest_version() {
+  local script_dir="$(script_directory)"
+  local current_version="$(cat $script_dir/../VERSION)"
+  local latest_version="$(curl --fail --silent "https://sqrtofsaturn:$OCTOSWARM_GITHUB_API_TOKEN@api.github.com/repos/octoblu/octoswarm/releases/latest" | jq --raw-output '.tag_name' | tr -d 'v')"
+
+  if [ "$current_version" != "$latest_version" ]; then
+    fatal "octoswarm is not up to date. Current Version: $current_version, Latest Version: $latest_version. Cowardly refusing to do anything."
   fi
 }
 
@@ -212,6 +236,9 @@ main() {
   assert_required_env
   assert_octoswarm_command "$script_name"
   assert_stack
+  local stack_version="$(get_config_val '.version')"
+  assert_required_stack_version "$stack_version"
+  assert_latest_version
   export STACK_NAME="$(get_config_val '.stackName')"
   export STACK_ENV_NAME="$(get_config_val '.stackEnvName')"
   export STACK_TMP_DIR="/tmp/$STACK_ENV_NAME-$STACK_NAME"
