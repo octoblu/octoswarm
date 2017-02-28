@@ -35,12 +35,13 @@ debug_core() {
   local debug_key="$1"; shift
   local cyan='\033[0;36m'
   local no_color='\033[0;0m'
+  local exit_code
   if [ -z "$DEBUG" ]; then
     return 0
   fi
   echo "$debug_key" | grep "$DEBUG"
-  local is_valid_debug="$?"
-  if [ "$debug_key" == '*' -a "$is_valid_debug" != "0" ]; then
+  exit_code=$?
+  if [ "$debug_key" == '*' ] && [ "$exit_code" != "0" ]; then
     return 0
   fi
   local message="$@"
@@ -164,9 +165,10 @@ elb_exists() {
 
 require_config_value() {
   local key="$1"
+  local exit_code
   check_config_value "$key"
-  local is_valid="$?"
-  if [ "$is_valid" != "0" ]; then
+  exit_code=$?
+  if [ "$exit_code" != "0" ]; then
     echo "* Cannot get $key from config."
     fatal "$STACK_CONFIG_PATH is invalid json."
   fi
@@ -174,9 +176,11 @@ require_config_value() {
 
 check_config_value() {
   local key="$1"
-  cat "$STACK_CONFIG_PATH" | jq "$key" &> /dev/null
-  local is_valid="$?"
-  if [ "$is_valid" != "0" ]; then
+  local exit_code
+
+  jq "$key" "$STACK_CONFIG_PATH" &> /dev/null
+  exit_code=$?
+  if [ "$exit_code" != "0" ]; then
     return 1
   fi
   return 0
@@ -185,19 +189,37 @@ check_config_value() {
 get_config_val() {
   local key="$1"
   local value
-  value="$(cat "$STACK_CONFIG_PATH" | jq --raw-output "$key")"
-  if [ -z "$value" -o "$?" != "0" ]; then
+  local exit_code
+  value="$(jq --raw-output "$key" "$STACK_CONFIG_PATH")"
+  exit_code=$?
+  if [ -z "$value" ] || [ "$exit_code" != "0" ]; then
     fatal "Unable to get $key from config"
   fi
   debug "got $key = $value"
   echo "$value"
 }
 
+get_config_array() {
+  local key="$1"
+  jq --compact-output "$key" "$STACK_CONFIG_PATH"
+}
+
+get_service_full_name() {
+  local service_name="$1"
+  local name="$(get_service_val "$service_name" '.name')"
+  local stack_env_name="$(get_config_val '.stackEnvName')"
+  local stack_name="$(get_config_val '.stackName')"
+
+  echo "$stack_env_name-$stack_name-$name"
+}
+
 get_service_val() {
-  local service="$1"
+  local service_name="$1"
   local key="$2"
-  value="$(echo "$service" | jq --raw-output "$key")"
-  if [ "$?" != "0" ]; then
+  local exit_code
+  value="$(get_service_by_name "$service_name" | jq --raw-output "$key")"
+  exit_code=$?
+  if [ "$exit_code" != "0" ]; then
     fatal "Unable to get $key from config"
   fi
   if [ "$value" == "null" ]; then
@@ -207,18 +229,15 @@ get_service_val() {
   echo "$value"
 }
 
-get_config_array() {
-  local key="$1"
-  cat "$STACK_CONFIG_PATH" | jq --compact-output "$key"
+get_service_array() {
+  local service_name="$1"
+  local key="$2"
+  get_service_by_name "$service_name" | jq --compact-output "$key"
 }
 
-get_service_full_name() {
-  local service="$1"
-  local name="$(get_service_val "$service" '.name')"
-  local stack_env_name="$(get_config_val '.stackEnvName')"
-  local stack_name="$(get_config_val '.stackName')"
-
-  echo "$stack_env_name-$stack_name-$name"
+get_service_by_name() {
+  local service_name="$1"
+  jq --compact-output --arg service_name "$service_name" '.services[] | select(.name==$service_name)' "$STACK_CONFIG_PATH"
 }
 
 is_stack_empty() {
@@ -257,4 +276,8 @@ script_directory(){
   dir="$( cd -P "$( dirname "$source" )" && pwd )"
 
   echo "$dir"
+}
+
+function join_by {
+  local IFS="$1"; shift; echo "$*";
 }

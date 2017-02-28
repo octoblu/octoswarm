@@ -22,9 +22,11 @@ assert_required_config() {
 
 ensure_pingdoms() {
   debug 'ensure pingdoms'
-  local services=( $(get_config_array '.services[]') )
-  for service in "${services[@]}"; do
-    local name="$(get_service_val "$service" '.name')"
+  get_config_array '.services[]' | while read service; do
+    local name="$(echo "$service" | jq --raw-output '.name')"
+    if [ "$name" == "" ]; then
+      fatal "Could not parse service name"
+    fi
     stack ensure-pingdom-check "$name" || fatal "unable to ensure service $name"
   done
 }

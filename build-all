@@ -7,7 +7,7 @@ ensure_projects() {
     hub clone octoblu/octobash "$PROJECTS_DIR/octobash"
   fi
   if [ ! -d "$PROJECTS_DIR/octofish" ]; then
-    hub clone octoblu/octobash "$PROJECTS_DIR/octofish"
+    hub clone octoblu/octofish "$PROJECTS_DIR/octofish"
   fi
   if [ ! -d "$PROJECTS_DIR/octodocker" ]; then
     hub clone octoblu/octodocker "$PROJECTS_DIR/octodocker"
