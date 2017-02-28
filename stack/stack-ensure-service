@@ -100,11 +100,6 @@ get_env_var() {
   echo "$env_line" | sed -e 's/\s*=.*//'
 }
 
-get_service_name() {
-  local service="$1"
-  echo "$service" | jq -r '.name'
-}
-
 get_service_spec_no_cache() {
   local service_name="$1"
   docker service inspect "$service_name" 2> /dev/null
@@ -203,7 +198,7 @@ ensure_network() {
 }
 
 ensure_service() {
-  local service="$1"
+  local service_name="$1"
   local opt_beekeeper
   local opt_docker_sock
   local opt_role
@@ -234,22 +229,22 @@ ensure_service() {
   local logentries
   local envFile
   local beekeeper
-  service_name="$(echo "$service" | jq -r '.name')"
-  beekeeper="$(echo "$service" | jq -r '.beekeeper.update')"
-  count="$(echo "$service" | jq -r '.count')"
-  docker_repo="$(echo "$service" | jq -r '.docker.repo')"
-  network="$(echo "$service" | jq -r '.docker.network')"
-  mode="$(echo "$service" | jq -r '.docker.mode')"
-  image="$(echo "$service" | jq -r '.docker.image')"
-  role="$(echo "$service" | jq -r '.docker.role')"
-  dockerSock="$(echo "$service" | jq -r '.docker.sock')"
-  publish="$(echo "$service" | jq --compact-output -r '.docker.publish[]' 2>/dev/null)"
-  traefikHost="$(echo "$service" | jq -r '.traefik.host')"
-  traefikPathPrefix="$(echo "$service" | jq -r '.traefik.pathPrefix')"
-  runOptions="$(echo "$service" | jq --compact-output -r '.docker.runOptions[]' 2>/dev/null)"
-  withRegistryAuth="$(echo "$service" | jq -r '.docker.withRegistryAuth')"
-  logentries="$(echo "$service" | jq -r '.docker.logentries')"
-  envFile="$(echo "$service" | jq -r '.envFile')"
+  service_name="$(get_service_val "$service_name" '.name')"
+  beekeeper="$(get_service_val "$service_name" '.beekeeper.update')"
+  count="$(get_service_val "$service_name" '.count')"
+  docker_repo="$(get_service_val "$service_name" '.docker.repo')"
+  network="$(get_service_val "$service_name" '.docker.network')"
+  mode="$(get_service_val "$service_name" '.docker.mode')"
+  image="$(get_service_val "$service_name" '.docker.image')"
+  role="$(get_service_val "$service_name" '.docker.role')"
+  dockerSock="$(get_service_val "$service_name" '.docker.sock')"
+  publish=( $(get_service_array "$service_name" '.docker.publish[]') )
+  traefikHost="$(get_service_val "$service_name" '.traefik.host')"
+  traefikPathPrefix="$(get_service_val "$service_name" '.traefik.pathPrefix')"
+  runOptions=( $(get_service_array "$service_name" '.docker.runOptions[]') )
+  withRegistryAuth="$(get_service_val "$service_name" '.docker.withRegistryAuth')"
+  logentries="$(get_service_val "$service_name" '.docker.logentries')"
+  envFile="$(get_service_val "$service_name" '.envFile')"
   local labelFlag='--label'
   local mountFlag='--mount'
   local publishFlag='--publish'
@@ -262,16 +257,16 @@ ensure_service() {
     publishFlag='--publish-add'
     constraintFlag='--constraint-add'
   fi
-  if [ "$envFile" == "null" ]; then
+  if [ "$envFile" == "" ]; then
     envFile="$STACK_ENV_DIR/$service_name.env"
   fi
-  if [ "$network" == "null" ]; then
+  if [ "$network" == "" ]; then
     network="traefik"
   fi
-  if [ "$mode" == "null" ]; then
+  if [ "$mode" == "" ]; then
     mode="replicated"
   fi
-  if [ "$beekeeper" == "null" ] || [ "$beekeeper" == "" ]; then
+  if [ "$beekeeper" == "" ] || [ "$beekeeper" == "" ]; then
     beekeeper="false"
   fi
   if [ "$mode" == "replicated" ]; then
@@ -280,14 +275,14 @@ ensure_service() {
     fi
   fi
   opt_mode="--mode $mode"
-  if [ "$image" == "null" ]; then
-    if [ "$docker_repo" == "null" ]; then
+  if [ "$image" == "" ]; then
+    if [ "$docker_repo" == "" ]; then
       image="$(swarm-get-latest-docker-url "octoblu/$service_name")"
     else
       image="$(swarm-get-latest-docker-url "$docker_repo")"
     fi
   fi
-  if [ "$beekeeper" == "null" ]; then
+  if [ "$beekeeper" == "" ]; then
     beekeeper="true"
   fi
   if [ "$beekeeper" == "true" ]; then
@@ -304,14 +299,14 @@ ensure_service() {
       opt_docker_sock="$mountFlag type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock"
     fi
   fi
-  if [ "$role" != "null" ]; then
+  if [ "$role" != "" ]; then
     if [ "$(has_role "$service_name" "$role")" != 'true' ]; then
       opt_role="$constraintFlag node.role==$role"
     fi
   fi
-  if [ "$traefikHost" != "null" ]; then
+  if [ "$traefikHost" != "" ]; then
     local frontendRule="Host:$traefikHost"
-    if [ "$traefikPathPrefix" != "null" ]; then
+    if [ "$traefikPathPrefix" != "" ]; then
       frontendRule="${frontendRule};PathPrefix:${traefikPathPrefix}"
     fi
     opt_traefik="$labelFlag traefik.frontend.rule=${frontendRule} $labelFlag traefik.port=80 $labelFlag traefik.docker.network=traefik"
@@ -320,13 +315,15 @@ ensure_service() {
     opt_logentries="--log-driver logentries --log-opt logentries-token=$OCTOSWARM_LOGENTRIES_TOKEN"
   fi
 
-  for port in $publish; do
+  for port in "${publish[@]}"; do
     opt_publish="$opt_publish $publishFlag $port"
   done
 
-  for option in $runOptions; do
+  for option in "${runOptions[@]}"; do
     opt_run="$opt_run $option"
   done
+
+  debug "publish $opt_publish run $opt_run"
 
   ensure_network "$network"
 
@@ -409,18 +406,17 @@ main() {
 
   is_stack_empty || fatal 'Not initialized, run `create-cluster`'
 
-  local services=( $(get_config_array '.services[]') )
-  local _service_name
   local exit_code
-  for service in "${services[@]}"; do
-    _service_name="$(get_service_name "$service")"
-    if [ "$service_name" == "$_service_name" ]; then
-      ensure_service "$service"
-      exit_code=$?
-      SERVICE_SPEC_CACHE=""
-      exit $exit_code
-    fi
-  done
+  local service="$(get_service_by_name "$service_name")"
+  if [ "$service" == "" ]; then
+    fatal "Unable to find $service_name"
+  fi
+  if [ "$service_name" != "" ]; then
+    ensure_service "$service_name"
+    exit_code=$?
+    SERVICE_SPEC_CACHE=""
+    exit $exit_code
+  fi
 }
 
 main "$@"

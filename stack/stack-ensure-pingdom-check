@@ -304,6 +304,9 @@ main() {
 
   local exit_code
   local service="$(get_service_by_name "$service_name")"
+  if [ "$service" == "" ]; then
+    fatal "Unable to find $service_name"
+  fi
   if [ "$service_name" != "" ]; then
     ensure_pingdom_check "$service_name"
     exit_code=$?
