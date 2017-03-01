@@ -53,7 +53,7 @@ install_projects() {
 }
 
 main() {
-  echo docker pull octoblu/octoalpine:latest \
+  docker pull octoblu/octoalpine:latest \
   && ensure_projects \
   && build_projects \
   && install_projects

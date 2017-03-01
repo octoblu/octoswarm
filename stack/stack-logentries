@@ -26,7 +26,7 @@ assert_required_params(){
   local service_name="$1"
   local instance_name="$2"
 
-  if [ -n "$service_name" -a -n "$instance_name" ]; then
+  if [ -n "$service_name" ] && [ -n "$instance_name" ]; then
     return 0
   fi
 
@@ -110,14 +110,18 @@ get_docker_instance_name_suffix() {
   | awk '{print $1}'
 }
 
-follow_instance() {
+get_recent_logs() {
   local service_name="$1"
   local instance_name="$2"
-  local additional_args="$3"
+  local minutes="$3"
   local machine_name
   local docker_instance_name
   local docker_container_name
   local docker_config
+
+  if [ "$minutes" == "" ]; then
+    minutes='5'
+  fi
 
   machine_name="$(get_docker_machine_name "$service_name" "$instance_name")"
   assert_machine_name "$machine_name" "$service_name" "$instance_name" || return 1
@@ -129,18 +133,17 @@ follow_instance() {
 
   echo "Following: $service_name.$instance_name ($docker_container_name)"
   docker_config="$(docker-machine config "$machine_name" 2> /dev/null)"
-  lecli query -n swarm_prod --leql 'where(container_id='$docker_container_name')' -r 'last 5 minutes' \
+  lecli query -n swarm_prod --leql "where(container_id=$docker_container_name)" -r "last $minutes minutes" \
     || echo "Error following: $service_name.$instance_name"
-  # docker $docker_config logs --follow $additional_args "$docker_container_name" \
 }
 
-try_follow_instance() {
+try_get_recent_logs() {
   local service_name="$1"
   local instance_name="$2"
   local additional_args="$3"
   local attempt=0
   while [ $attempt -lt 10 ]; do
-  follow_instance "$service_name" "$instance_name" "$additional_args" && return 0
+  get_recent_logs "$service_name" "$instance_name" "$additional_args" && return 0
   echo "$attempt/10 of following instance, retrying"
   let "attempt+=1"
   done
@@ -151,7 +154,7 @@ try_follow_instance() {
 main() {
   local service_name;
   local instance_name;
-  local additional_args;
+  local minutes;
 
   while [ "$1" != "" ]; do
     local param="$1"
@@ -165,8 +168,12 @@ main() {
         version
         exit 0
         ;;
+      -m | --minutes)
+        minutes="$value"
+        shift
+        ;;
       *)
-        if [ "${param::1}" == '-' -a "$param" != "--" ]; then
+        if [ "${param::1}" == '-' ] && [ "$param" != "--" ]; then
           echo "ERROR: unknown parameter \"$param\""
           usage
           exit 1
@@ -186,7 +193,7 @@ main() {
   done
 
   assert_required_params "$service_name" "$instance_name"
-  try_follow_instance "$service_name" "$instance_name" "$additional_args"
+  try_get_recent_logs "$service_name" "$instance_name" "$minutes"
 }
 
 main "$@"
