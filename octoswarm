@@ -59,6 +59,26 @@ assert_required_env() {
     fatal 'Missing required env BEEKEEPER_URI'
   fi
 
+  if [ -z "$OCTOSWARM_LOGENTRIES_ACCOUNT_RESOURCE_ID" ]; then
+    fatal 'Missing required env OCTOSWARM_LOGENTRIES_ACCOUNT_RESOURCE_ID'
+  fi
+
+  if [ -z "$OCTOSWARM_LOGENTRIES_OWNER_API_KEY_ID" ]; then
+    fatal 'Missing required env OCTOSWARM_LOGENTRIES_OWNER_API_KEY_ID'
+  fi
+
+  if [ -z "$OCTOSWARM_LOGENTRIES_OWNER_API_KEY" ]; then
+    fatal 'Missing required env OCTOSWARM_LOGENTRIES_OWNER_API_KEY'
+  fi
+
+  if [ -z "$OCTOSWARM_LOGENTRIES_RW_API_KEY" ]; then
+    fatal 'Missing required env OCTOSWARM_LOGENTRIES_RW_API_KEY'
+  fi
+
+  if [ -z "$OCTOSWARM_LOGENTRIES_LOG_ID" ]; then
+    fatal 'Missing required env OCTOSWARM_LOGENTRIES_LOG_ID'
+  fi
+
   if [ -z "$OCTOSWARM_LOGENTRIES_TOKEN" ]; then
     fatal 'Missing required env OCTOSWARM_LOGENTRIES_TOKEN'
   fi
@@ -125,6 +145,11 @@ assert_octoswarm_command() {
     return 1
   fi
   return 0
+}
+
+copy_lecli_config() {
+  mkdir -p ~/.config/lecli
+  cat "/usr/src/app/assets/lecli-config.ini" | envsubst > ~/.config/lecli/config.ini
 }
 
 create_docker_config() {
@@ -239,6 +264,7 @@ main() {
   local stack_version="$(get_config_val '.version')"
   assert_required_stack_version "$stack_version"
   assert_latest_version
+  copy_lecli_config
   export STACK_NAME="$(get_config_val '.stackName')"
   export STACK_ENV_NAME="$(get_config_val '.stackEnvName')"
   export STACK_TMP_DIR="/tmp/$STACK_ENV_NAME-$STACK_NAME"

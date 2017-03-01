@@ -99,6 +99,7 @@ main() {
       chmod +x /usr/local/bin/whalebrew
   fi
 
+  docker pull octoblu/octoalpine:latest
   install octoswarm
   install octostack
   install octodocker
