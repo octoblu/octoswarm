@@ -84,8 +84,10 @@ uninstall_all() {
   local tools=( "$@" )
 
   for tool in "${tools[@]}"; do
-    uninstall "$tool" || return $?
+    uninstall "$tool"
   done
+
+  return 0
 }
 
 main() {
