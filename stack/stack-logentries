@@ -133,7 +133,7 @@ get_recent_logs() {
 
   echo "Following: $service_name.$instance_name ($docker_container_name)"
   docker_config="$(docker-machine config "$machine_name" 2> /dev/null)"
-  lecli query -n swarm_prod --leql "where(container_id=$docker_container_name)" -r "last $minutes minutes" \
+  lecli query -n swarm_prod --leql "where(container_id=$docker_container_name)" -r "last $minutes minutes" | awk 'match($0,/log:(.*)/) { print substr($0,RSTART+4,RLENGTH-5) }' \
     || echo "Error following: $service_name.$instance_name"
 }
 
