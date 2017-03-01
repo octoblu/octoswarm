@@ -1,12 +1,13 @@
 #!/bin/bash
 
 SCRIPT_NAME='install'
+TOOLS=( octoswarm octostack octodocker octomachine octobash octofish )
 
 matches_debug() {
   if [ -z "$DEBUG" ]; then
     return 1
   fi
-  if [[ $SCRIPT_NAME == $DEBUG ]]; then
+  if [[ $SCRIPT_NAME == "$DEBUG" ]]; then
     return 0
   fi
   return 1
@@ -50,7 +51,8 @@ usage(){
 }
 
 version(){
-  local directory="$(script_directory)"
+  local directory
+  directory="$(script_directory)"
 
   if [ -f "${directory}/VERSION" ]; then
     cat "${directory}/VERSION"
@@ -61,16 +63,36 @@ version(){
 
 install() {
   local image="$1"
-  whalebrew uninstall "$image" 2> /dev/null
   docker pull "octoblu/$image"
   whalebrew install "octoblu/$image"
+}
+
+uninstall() {
+  local image="$1"
+  whalebrew uninstall "$image" 2> /dev/null
+}
+
+install_all() {
+  local tools=( "$@" )
+
+  for tool in "${tools[@]}"; do
+    install "$tool" || return $?
+  done
+}
+
+uninstall_all() {
+  local tools=( "$@" )
+
+  for tool in "${tools[@]}"; do
+    uninstall "$tool" || return $?
+  done
 }
 
 main() {
   # Define args up here
   while [ "$1" != "" ]; do
     local param="$1"
-    local value="$2"
+    # local value="$2"
     case "$param" in
       -h | --help)
         usage
@@ -99,13 +121,11 @@ main() {
       chmod +x /usr/local/bin/whalebrew
   fi
 
-  docker pull octoblu/octoalpine:latest
-  install octoswarm
-  install octostack
-  install octodocker
-  install octomachine
-  install octobash
-  install octofish
+
+
+  uninstall_all "${TOOLS[@]}" \
+  && docker pull octoblu/octoalpine:latest \
+  && install_all "${TOOLS[@]}"
 }
 
 main "$@"
