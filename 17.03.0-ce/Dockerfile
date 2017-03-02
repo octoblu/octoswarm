@@ -1,4 +1,4 @@
-FROM octoblu/octoalpine:17.03.0-ce
+FROM octoblu/octoalpine-docker:17.03.0-ce
 MAINTAINER Octoblu <docker@octoblu.com>
 
 RUN mkdir -p /usr/src/app
