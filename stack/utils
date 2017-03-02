@@ -237,6 +237,14 @@ get_service_array() {
   get_service_by_name "$service_name" | jq --compact-output "$key" 2> /dev/null
 }
 
+get_service_array_raw() {
+  local service_name="$1"
+  local key="$2"
+  debug "get array $key"
+  debug "$(get_service_by_name "$service_name")"
+  get_service_by_name "$service_name" | jq --compact-output --raw-output "$key" 2> /dev/null
+}
+
 get_service_by_name() {
   local service_name="$1"
   jq --compact-output --arg service_name "$service_name" '.services[] | select(.name==$service_name)' "$STACK_CONFIG_PATH" 2>/dev/null

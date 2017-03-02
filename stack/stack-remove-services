@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SCRIPT_NAME='stack-ensure-pingdom'
+SCRIPT_NAME='stack-remove-services'
 
 source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 
@@ -20,14 +20,14 @@ assert_required_config() {
   require_config_value '.services[]'
 }
 
-ensure_pingdoms() {
+remove_services() {
   debug 'ensure pingdoms'
   get_config_array '.services[]' | while read service; do
     local name="$(echo "$service" | jq --raw-output '.name')"
     if [ "$name" == "" ]; then
       fatal "Could not parse service name"
     fi
-    stack ensure-pingdom-check "$name" || fatal "unable to ensure pingdom $name"
+    docker service rm "$name" || fatal "unable to remove service $name"
   done
 }
 
@@ -60,7 +60,7 @@ main() {
 
   is_stack_empty || fatal 'Not initialized, run `create-cluster`'
 
-  ensure_pingdoms || fatal 'unable to ensure pingdom'
+  remove_services || fatal 'unable to remove services'
 }
 
 main "$@"
