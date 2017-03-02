@@ -1,7 +1,6 @@
 #!/bin/bash
 
 SCRIPT_NAME='install'
-TOOLS=( octoswarm octostack octodocker octomachine octobash octofish )
 
 matches_debug() {
   if [ -z "$DEBUG" ]; then
@@ -72,24 +71,6 @@ uninstall() {
   whalebrew uninstall "$image" 2> /dev/null
 }
 
-install_all() {
-  local tools=( "$@" )
-
-  for tool in "${tools[@]}"; do
-    install "$tool" || return $?
-  done
-}
-
-uninstall_all() {
-  local tools=( "$@" )
-
-  for tool in "${tools[@]}"; do
-    uninstall "$tool"
-  done
-
-  return 0
-}
-
 main() {
   # Define args up here
   while [ "$1" != "" ]; do
@@ -123,9 +104,8 @@ main() {
       chmod +x /usr/local/bin/whalebrew
   fi
 
-  uninstall_all "${TOOLS[@]}" \
-  && docker pull octoblu/octoalpine:latest \
-  && install_all "${TOOLS[@]}"
+  brew reinstall octoswarm \
+    && brew link --overwrite octoswarm
 }
 
 main "$@"
