@@ -1,7 +1,9 @@
-FROM octoblu/octoalpine:latest
+FROM octoblu/octoalpine:1.13.1
 MAINTAINER Octoblu <docker@octoblu.com>
 
 RUN mkdir -p /usr/src/app
+
+LABEL io.whalebrew.name octoswarm-1.13.1
 
 LABEL io.whalebrew.config.environment='[ \
   "AWS_ACCESS_KEY_ID", \
@@ -35,7 +37,7 @@ ENV MACHINE_STORAGE_PATH /workdir/docker-machine
 ENV VERSION_FILE_PATH /usr/src/app/VERSION
 
 COPY octoswarm /usr/local/bin/octoswarm
-COPY . /usr/src/app
-COPY bin/* /usr/local/bin/
+COPY .. /usr/src/app
+COPY ../bin/* /usr/local/bin/
 
-ENTRYPOINT ["octoswarm"]
+ENTRYPOINT ["entrypoint"]
