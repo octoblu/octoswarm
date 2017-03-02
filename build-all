@@ -39,8 +39,12 @@ build_projects() {
 
 install() {
   local image="$1"
-  whalebrew uninstall "$image" 2> /dev/null
   whalebrew install "local/$image"
+}
+
+uninstall() {
+  local image="$1"
+  whalebrew uninstall "$image" 2> /dev/null
 }
 
 install_projects() {
@@ -52,8 +56,18 @@ install_projects() {
   && install "octofish"
 }
 
+uninstall_projects() {
+  uninstall "octobash"
+  uninstall "octodocker"
+  uninstall "octomachine"
+  uninstall "octoswarm"
+  uninstall "octostack"
+  uninstall "octofish"
+}
+
 main() {
-  docker pull octoblu/octoalpine:latest \
+  uninstall_projects \
+  && docker pull octoblu/octoalpine:latest \
   && ensure_projects \
   && build_projects \
   && install_projects

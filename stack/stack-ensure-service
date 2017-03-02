@@ -191,7 +191,7 @@ ensure_network() {
   docker network inspect "$service_name" &> /dev/null
   if [ "$?" != "0" ]; then
     debug "creating network $service_name"
-    run_cmd docker network create --driver overlay "$service_name"
+    run_cmd docker network create --driver overlay "$service_name"  --attachable --subnet 10.10.9.0/24
     # sleepy time for docker
     sleep 10
   fi
@@ -238,10 +238,10 @@ ensure_service() {
   image="$(get_service_val "$service_name" '.docker.image')"
   role="$(get_service_val "$service_name" '.docker.role')"
   dockerSock="$(get_service_val "$service_name" '.docker.sock')"
-  publish=( $(get_service_array "$service_name" '.docker.publish[]') )
+  publish=( $(get_service_array_raw "$service_name" '.docker.publish[]') )
   traefikHost="$(get_service_val "$service_name" '.traefik.host')"
   traefikPathPrefix="$(get_service_val "$service_name" '.traefik.pathPrefix')"
-  runOptions=( $(get_service_array "$service_name" '.docker.runOptions[]') )
+  runOptions=( $(get_service_array_raw "$service_name" '.docker.runOptions[]') )
   withRegistryAuth="$(get_service_val "$service_name" '.docker.withRegistryAuth')"
   logentries="$(get_service_val "$service_name" '.docker.logentries')"
   envFile="$(get_service_val "$service_name" '.envFile')"
