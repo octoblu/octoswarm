@@ -36,8 +36,8 @@ ENV STACK_ENV_DIR /workdir/env.d
 ENV MACHINE_STORAGE_PATH /workdir/docker-machine
 ENV VERSION_FILE_PATH /usr/src/app/VERSION
 
-COPY octoswarm /usr/local/bin/octoswarm
+COPY ../entrypoint /usr/local/bin/octoswarm
 COPY .. /usr/src/app
 COPY ../bin/* /usr/local/bin/
 
-ENTRYPOINT ["entrypoint"]
+ENTRYPOINT ["octoswarm"]
