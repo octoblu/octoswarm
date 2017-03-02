@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SUPPORTED_VERSION="3.0.0"
+SUPPORTED_VERSION="9.0.0"
 
 source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 

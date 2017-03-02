@@ -1,76 +1,31 @@
 #!/bin/bash
 
-PROJECTS_DIR="$HOME/Projects/Octoblu"
-
-ensure_projects() {
-  if [ ! -d "$PROJECTS_DIR/octobash" ]; then
-    hub clone octoblu/octobash "$PROJECTS_DIR/octobash"
-  fi
-  if [ ! -d "$PROJECTS_DIR/octofish" ]; then
-    hub clone octoblu/octofish "$PROJECTS_DIR/octofish"
-  fi
-  if [ ! -d "$PROJECTS_DIR/octodocker" ]; then
-    hub clone octoblu/octodocker "$PROJECTS_DIR/octodocker"
-  fi
-  if [ ! -d "$PROJECTS_DIR/octomachine" ]; then
-    hub clone octoblu/octomachine "$PROJECTS_DIR/octomachine"
-  fi
-  if [ ! -d "$PROJECTS_DIR/octostack" ]; then
-    hub clone octoblu/octostack "$PROJECTS_DIR/octostack"
-  fi
+build_and_install() {
+  local version="$1"
+  docker pull "octoblu/octoalpine-docker:$version" && \
+    uninstall "$version" && \
+    build "$version" && \
+    install "$version"
 }
 
 build() {
-  local image="$1"
-  docker build \
-    -t "local/$image" \
-    -f "$PROJECTS_DIR/$image/Dockerfile-dev" \
-    "$PROJECTS_DIR/$image"
-}
-
-build_projects() {
-  docker build -t local/octoswarm . \
-  && build "octodocker" \
-  && build "octomachine" \
-  && build "octostack" \
-  && build "octobash" \
-  && build "octofish"
+  local version="$1"
+  docker build -t "local/octoswarm-$version" -f "./Dockerfile-$version" .
 }
 
 install() {
-  local image="$1"
-  whalebrew install "local/$image"
+  local version="$1"
+  whalebrew install "local/octoswarm-$version"
 }
 
 uninstall() {
-  local image="$1"
-  whalebrew uninstall "$image" 2> /dev/null
-}
-
-install_projects() {
-  install "octobash" \
-  && install "octodocker" \
-  && install "octomachine" \
-  && install "octoswarm" \
-  && install "octostack" \
-  && install "octofish"
-}
-
-uninstall_projects() {
-  uninstall "octobash"
-  uninstall "octodocker"
-  uninstall "octomachine"
-  uninstall "octoswarm"
-  uninstall "octostack"
-  uninstall "octofish"
+  local version="$1"
+  whalebrew uninstall "octoswarm-$version" 2> /dev/null || return 0
 }
 
 main() {
-  uninstall_projects \
-  && docker pull octoblu/octoalpine:latest \
-  && ensure_projects \
-  && build_projects \
-  && install_projects
+  build_and_install "1.13.1"
+  build_and_install "17.03.0-ce"
 }
 
 main "$@"
