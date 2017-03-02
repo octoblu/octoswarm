@@ -63,7 +63,7 @@ class StackRoute53 {
         ResourceRecordSet: {
           Name: `${record.subdomain}.${this.options.domain}`,
           Type: 'SRV',
-          TTL: 300,
+          TTL: (record.ttl || 300),
           ResourceRecords: record.values.map((value) => ({ Value: value })),
         },
       }

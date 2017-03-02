@@ -123,8 +123,6 @@ main() {
       chmod +x /usr/local/bin/whalebrew
   fi
 
-
-
   uninstall_all "${TOOLS[@]}" \
   && docker pull octoblu/octoalpine:latest \
   && install_all "${TOOLS[@]}"
