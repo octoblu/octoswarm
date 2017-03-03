@@ -124,7 +124,7 @@ main() {
   debug 'sleep for 10 seconds to wait for docker'
   sleep 10
   docker_login "$machine_id" "$hub_username" "$hub_password"
-  docker-machine ssh "$machine_id" sudo apt-get install ntp nptstat
+  docker-machine ssh "$machine_id" sudo apt-get install -y ntp nptstat
   sleep 2
   debug 'sleep for 60 seconds to wait for machine to reboot'
   docker-machine restart "$machine_id"
