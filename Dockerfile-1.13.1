@@ -40,5 +40,6 @@ ENV VERSION_FILE_PATH /usr/src/app/VERSION
 COPY entrypoint /usr/local/bin/octoswarm
 COPY . /usr/src/app
 COPY bin/* /usr/local/bin/
+RUN chmod -R uog+w /etc/passwd /home
 
 ENTRYPOINT ["octoswarm"]

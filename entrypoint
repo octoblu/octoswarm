@@ -148,16 +148,24 @@ assert_octoswarm_command() {
   return 0
 }
 
+become_a_real_boy() {
+  local uid
+  uid="$(id -u)"
+
+  mkdir -p /home/octoblu
+  echo "octoblu:x:${uid}:${uid}:Linux User,,,:/home/octoblu:" >> /etc/passwd
+}
+
 copy_lecli_config() {
-  mkdir -p ~/.config/lecli
-  cat "/usr/src/app/assets/lecli-config.ini" | envsubst > ~/.config/lecli/config.ini
+  mkdir -p "$XDG_CONFIG_HOME/lecli"
+  cat "/usr/src/app/assets/lecli-config.ini" | envsubst > "$XDG_CONFIG_HOME/lecli/config.ini"
 }
 
 create_docker_config() {
   local header
-  mkdir -p ~/.docker
+  mkdir -p /usr/local/etc/docker
   header=$(echo "{\"username\":\"${DOCKER_HUB_USERNAME}\",\"password\":\"${DOCKER_HUB_PASSWORD}\"}" | base64 -w 0)
-  echo "{ \"HttpHeaders\": { \"X-Registry-Auth\": \"$header\" } }" > ~/.docker/config.json
+  echo "{ \"HttpHeaders\": { \"X-Registry-Auth\": \"$header\" } }" > /usr/local/etc/docker/config.json
 }
 
 connect_to_machine() {
@@ -258,6 +266,8 @@ main() {
         ;;
     esac
   fi
+
+  become_a_real_boy
 
   assert_required_env
   assert_octoswarm_command "$script_name"

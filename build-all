@@ -2,11 +2,11 @@
 
 build_and_install() {
   local version="$1"
-  docker pull "octoblu/octoalpine:latest" && \
-    docker pull "octoblu/octoalpine-docker:$version" && \
-    uninstall "$version" && \
-    build "$version" && \
-    install "$version"
+   docker pull "octoblu/octoalpine:latest" \
+   && docker pull "octoblu/octoalpine-docker:$version" \
+   && uninstall "$version" \
+   && build "$version" \
+   && install "$version"
 }
 
 build() {
