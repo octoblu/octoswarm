@@ -104,8 +104,8 @@ main() {
       chmod +x /usr/local/bin/whalebrew
   fi
 
-  brew reinstall octoswarm \
-    && brew link --overwrite octoswarm
+  brew reinstall octoswarm
+  brew link --overwrite octoswarm
 }
 
 main "$@"
