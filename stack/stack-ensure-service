@@ -89,6 +89,7 @@ get_env_rm_options() {
     done
     if [ "$exists" == "false" ]; then
       debug "removing env: $actual_env_var"
+      warn "Removing env $actual_env_var"
       opt_env_rm="$opt_env_rm --env-rm $actual_env_var"
     fi
   done
@@ -213,6 +214,7 @@ ensure_service() {
   local opt_replicas
   local opt_logentries
   local opt_image
+  local opt_healthcheck
   local service_name
   local count
   local docker_repo
@@ -220,6 +222,7 @@ ensure_service() {
   local mode
   local image
   local role
+  local healthcheckDisable
   local dockerSock
   local publish
   local traefikHost
@@ -245,6 +248,7 @@ ensure_service() {
   withRegistryAuth="$(get_service_val "$service_name" '.docker.withRegistryAuth')"
   logentries="$(get_service_val "$service_name" '.docker.logentries')"
   envFile="$(get_service_val "$service_name" '.envFile')"
+  healthcheckDisable="$(get_service_val "$service_name" '.docker.healtcheck.disable')"
   local labelFlag='--label'
   local mountFlag='--mount'
   local publishFlag='--publish'
@@ -311,8 +315,14 @@ ensure_service() {
     fi
     opt_traefik="$labelFlag traefik.frontend.rule=${frontendRule} $labelFlag traefik.port=80 $labelFlag traefik.docker.network=traefik"
   fi
-  if [ "$logentries" == "true" -a -n "$OCTOSWARM_LOGENTRIES_TOKEN" ]; then
+  if [ "$logentries" == "true" ]; then
     opt_logentries="--log-driver logentries --log-opt logentries-token=$OCTOSWARM_LOGENTRIES_TOKEN"
+  else
+    opt_logentries="--log-driver none"
+  fi
+
+  if [ "$healthcheckDisable" == "true" ]; then
+    opt_healthcheck="--no-healthcheck"
   fi
 
   for port in "${publish[@]}"; do
@@ -346,6 +356,7 @@ ensure_service() {
       $opt_env_add \
       $opt_env_rm \
       $opt_logentries \
+      $opt_healthcheck \
       "$service_name"
   else
     debug 'creating service'
@@ -364,6 +375,7 @@ ensure_service() {
       $opt_beekeeper \
       $opt_with_registry_auth \
       $opt_logentries \
+      $opt_healthcheck \
       $opt_env \
       "$image" \
         $opt_run
@@ -407,7 +419,8 @@ main() {
   is_stack_empty || fatal 'Not initialized, run `create-cluster`'
 
   local exit_code
-  local service="$(get_service_by_name "$service_name")"
+  local service
+  service="$(get_service_by_name "$service_name")"
   if [ "$service" == "" ]; then
     fatal "Unable to find $service_name"
   fi
