@@ -128,7 +128,7 @@ main() {
   sleep 2
   debug 'sleep for 60 seconds to wait for machine to reboot'
   docker-machine restart "$machine_id"
-  sleep 2
+  sleep 60
 }
 
 main "$@"
