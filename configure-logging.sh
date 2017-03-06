@@ -1,6 +1,6 @@
 #!/bin/bash
 
-##
+LOGENTRIES_SERVICE_NAME='log-to-logentries'
 
 usage(){
   echo 'USAGE: configure-logging <logentries-token>'
@@ -27,36 +27,35 @@ create_octoswarm_dir() {
   mkdir -p /run/octoswarm
 }
 
-write_logentries_script() {
+write_script() {
   local logentries_token="$1"
   echo "#!/bin/bash
-journalctl --utc --follow --output=short \\
-  | awk -v token=$logentries_token '{ print token, \$0; fflush(); }' \\
-  | ncat --ssl --ssl-verify data.logentries.com 20000" | tee /run/octoswarm/log-to-logentries.sh
+journalctl --utc --follow --output=short | awk -v token=$logentries_token '{ print token, \$0; fflush(); }' | ncat --ssl --ssl-verify data.logentries.com 20000" \
+  | tee "/run/octoswarm/${LOGENTRIES_SERVICE_NAME}.sh"
 }
 
 make_executable() {
-  chmod +x /run/octoswarm/log-to-logentries.sh
+  chmod +x "/run/octoswarm/${LOGENTRIES_SERVICE_NAME}.sh"
 }
 
 write_unit_file() {
-  echo '[Unit]
+  echo "[Unit]
 Description=Push journal logs to logentries.com
 After=systemd-journald.service
 After=systemd-networkd.service
 [Service]
 Restart=always
-ExecStart=/bin/bash /run/octoswarm/log-to-logentries.sh
+ExecStart=/bin/bash /run/octoswarm/${LOGENTRIES_SERVICE_NAME}.sh
 [Install]
-WantedBy=multi-user.target' | tee /run/octoswarm/log-to-logentries.service
+WantedBy=multi-user.target" | tee "/run/octoswarm/${LOGENTRIES_SERVICE_NAME}.service"
 }
 
 start_unit() {
-  systemctl start /run/octoswarm/log-to-logentries.service
+  systemctl start "${LOGENTRIES_SERVICE_NAME}.service"
 }
 
 enable_unit() {
-  systemctl enable log-to-logentries.service
+  systemctl enable "/run/octoswarm/${LOGENTRIES_SERVICE_NAME}.service"
 }
 
 main() {
@@ -73,7 +72,7 @@ main() {
   esac
   assert_logentries_token "$logentries_token"
   create_octoswarm_dir \
-  && write_logentries_script "$logentries_token" \
+  && write_script "$logentries_token" \
   && make_executable \
   && write_unit_file \
   && start_unit \
