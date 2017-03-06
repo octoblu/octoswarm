@@ -39,6 +39,7 @@ make_executable() {
 }
 
 write_unit_file() {
+  echo '* writing log-to-logentries.service'
   echo "[Unit]
 Description=Push journal logs to logentries.com
 After=systemd-journald.service
@@ -51,8 +52,9 @@ WantedBy=multi-user.target" > "/run/octoswarm/${LOGENTRIES_SERVICE_NAME}.service
 }
 
 enable_unit() {
-  systemctl link "/run/octoswarm/${LOGENTRIES_SERVICE_NAME}.service" \
-   && systemctl enable "${LOGENTRIES_SERVICE_NAME}.service" \
+  echo "* enabling log-to-logentries"
+  systemctl disable "${LOGENTRIES_SERVICE_NAME}.service" 2> /dev/null
+  systemctl enable "/run/octoswarm/${LOGENTRIES_SERVICE_NAME}.service" \
    && systemctl start "${LOGENTRIES_SERVICE_NAME}.service"
 }
 
