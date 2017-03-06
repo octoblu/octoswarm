@@ -11,7 +11,7 @@ say_yes() {
   local response
   if [ "$SAY_YES" == 'false' ]; then
     echo "You've choosen to not just always say yes. So we are not just gonna do it."
-    read -s -p "press 'y' if you want to continue."$'\n' -n 1 response
+    read -r -s -p "press 'y' if you want to continue."$'\n' -n 1 response
     if [[ "$response" == 'y' ]]; then
       echo 'Good choice...'
       return 0
@@ -25,7 +25,7 @@ say_yes() {
 
 confirm_please() {
   local response
-  read -s -p "press 'y' if you want to continue."$'\n' -n 1 response
+  read -r -s -p "press 'y' if you want to continue."$'\n' -n 1 response
   if [[ "$response" != 'y' ]]; then
     exit 1
   fi
@@ -268,8 +268,16 @@ version(){
   fi
 }
 
+get_tag_or_branch() {
+  if [ -f "$VERSION_FILE_PATH" ]; then
+    echo "v$(cat "$VERSION_FILE_PATH")"
+  else
+    echo "master"
+  fi
+}
+
 run_cmd() {
-  debug "about to run: $@"
+  debug "about to run: $*"
   if [ "$DRY_RUN" == 'true' ]; then
     echo "$@"
   else

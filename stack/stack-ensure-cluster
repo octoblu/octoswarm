@@ -55,6 +55,15 @@ ensure_managers_elb() {
   done
 }
 
+ensure_machines() {
+  debug 'ensuring machines'
+  for machine_name in $(get_machine_names); do
+    debug "ensure machine $machine_name"
+    stack ensure-machine "$machine_name"
+  done
+  wait $(jobs -p)
+}
+
 ensure_managers() {
   debug 'ensuring managers'
   local count
@@ -166,9 +175,10 @@ main() {
   is_stack_empty || fatal 'Not initialized, run `create-cluster`'
 
   ensure_managers || fatal 'unable to ensure managers'
-  ensure_managers_elb || fatal 'unable to ensure managers elb'
   ensure_workers || fatal 'unable to ensure workers'
+  ensure_machines || fatal 'unable to ensure machines'
   ensure_services || fatal 'unable to ensure services'
+  ensure_managers_elb || fatal 'unable to ensure managers elb'
 }
 
 main "$@"
