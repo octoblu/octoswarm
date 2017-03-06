@@ -75,8 +75,8 @@ main() {
   && write_script "$logentries_token" \
   && make_executable \
   && write_unit_file \
-  && start_unit \
-  && enable_unit
+  && enable_unit \
+  && start_unit
 }
 
 main "$@"
