@@ -25,7 +25,7 @@ assert_logentries_token() {
 
 install_nmap() {
   echo '* installing nmap'
-  apt install -y nmap > /dev/null
+  apt install -y nmap
 }
 
 create_octoswarm_dir() {
