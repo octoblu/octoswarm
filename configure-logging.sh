@@ -24,7 +24,8 @@ assert_logentries_token() {
 }
 
 install_nmap() {
-  apt install -y nmap
+  echo '* installing nmap'
+  apt install -y nmap > /dev/null
 }
 
 create_octoswarm_dir() {
@@ -66,9 +67,9 @@ WantedBy=multi-user.target" > "/run/octoswarm/${LOGENTRIES_SERVICE_NAME}.service
 
 enable_unit() {
   echo "* enabling log-to-logentries"
-  systemctl disable "${LOGENTRIES_SERVICE_NAME}.service" 2> /dev/null
+  systemctl disable "${LOGENTRIES_SERVICE_NAME}.service" &> /dev/null
   systemctl enable "/run/octoswarm/${LOGENTRIES_SERVICE_NAME}.service" \
-   && systemctl start "${LOGENTRIES_SERVICE_NAME}.service"
+   && systemctl restart "${LOGENTRIES_SERVICE_NAME}.service"
 }
 
 main() {
