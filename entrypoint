@@ -230,21 +230,19 @@ escape_value_for_sed() {
   echo "$1" | sed -e 's/[\/&]/\\&/g'
 }
 
-get_machine_ids(){
+get_manager_machine_ids(){
   find "$MACHINE_STORAGE_PATH/machines" -iname "$STACK_ENV_NAME-$STACK_NAME-manager-*" -maxdepth 1 -mindepth 1 -type d
+}
+
+get_machine_ids() {
+  find "$MACHINE_STORAGE_PATH/machines" -iname "$STACK_ENV_NAME-$STACK_NAME-*" -maxdepth 1 -mindepth 1 -type d
 }
 
 get_machine_id() {
   local machine_id
-  local machine_private_key
   local machines
-  machines=$(get_machine_ids)
-  for machine_dir in $machines; do
-    machine_private_key="$machine_dir/id_rsa"
-    if [ -f "$machine_private_key" ]; then
-      chmod 600 "$machine_private_key"
-    fi
-  done
+  update_cert_permissions
+  machines=$(get_manager_machine_ids)
   for machine_dir in $machines; do
     machine_id="$(basename "$machine_dir")"
     validate_machine_id "$machine_id"
@@ -271,6 +269,17 @@ get_commands() {
 run_script() {
   local script="$1"; shift
   "$script" "$@"
+}
+
+update_cert_permissions() {
+  for machine_dir in $(get_machine_ids); do
+    local machine_private_key
+    machine_private_key="$machine_dir/id_rsa"
+    if [ -f "$machine_private_key" ]; then
+      debug "updating permissions for $machine_dir"
+      chmod 600 "$machine_private_key"
+    fi
+  done
 }
 
 validate_machine_id() {

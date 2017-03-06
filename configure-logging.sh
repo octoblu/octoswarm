@@ -40,8 +40,6 @@ journalctl \\
   --follow \\
   --output=short \\
   --catalog \\
-  --merge \\
-  --system \\
   --since now \\
   | awk -v token=$logentries_token '{ print token, \$0; fflush(); }' \\
   | ncat --ssl --ssl-verify data.logentries.com 20000" \
