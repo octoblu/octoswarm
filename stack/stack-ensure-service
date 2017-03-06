@@ -101,6 +101,38 @@ get_env_var() {
   echo "$env_line" | sed -e 's/\s*=.*//'
 }
 
+get_healthcheck_opt() {
+  local service_name="$1"
+  local opt_healthcheck
+  local healthcheckDisable
+  local healthcheckTimeout
+  local healthcheckInterval
+  local healthcheckCmd
+  healthcheckDisable="$(get_service_val "$service_name" '.docker.healthcheck.disable')"
+  healthcheckTimeout="$(get_service_val "$service_name" '.docker.healthcheck.timeout')"
+  healthcheckInterval="$(get_service_val "$service_name" '.docker.healthcheck.interval')"
+  healthcheckCmd="$(get_service_val "$service_name" '.docker.healthcheck.cmd')"
+  healthcheckRetries="$(get_service_val "$service_name" '.docker.healthcheck.retries')"
+
+  if [ "$healthcheckDisable" == "true" ]; then
+    opt_healthcheck="--no-healthcheck"
+  else
+    if [ "$healthcheckCmd" != "" ]; then
+      opt_healthcheck="$opt_healthcheck --health-cmd $healthcheckCmd"
+    fi
+    if [ "$healthcheckTimeout" != "" ]; then
+      opt_healthcheck="$opt_healthcheck --health-timeout $healthcheckTimeout"
+    fi
+    if [ "$healthcheckInterval" != "" ]; then
+      opt_healthcheck="$opt_healthcheck --health-interval $healthcheckInterval"
+    fi
+    if [ "$healthcheckRetries" != "" ]; then
+      opt_healthcheck="$opt_healthcheck --health-retries $healthcheckRetries"
+    fi
+  fi
+  echo "$opt_healthcheck"
+}
+
 get_service_spec_no_cache() {
   local service_name="$1"
   docker service inspect "$service_name" 2> /dev/null
@@ -222,7 +254,6 @@ ensure_service() {
   local mode
   local image
   local role
-  local healthcheckDisable
   local dockerSock
   local publish
   local traefikHost
@@ -248,7 +279,6 @@ ensure_service() {
   withRegistryAuth="$(get_service_val "$service_name" '.docker.withRegistryAuth')"
   logentries="$(get_service_val "$service_name" '.docker.logentries')"
   envFile="$(get_service_val "$service_name" '.envFile')"
-  healthcheckDisable="$(get_service_val "$service_name" '.docker.healthcheck.disable')"
   local labelFlag='--label'
   local mountFlag='--mount'
   local publishFlag='--publish'
@@ -321,9 +351,7 @@ ensure_service() {
     opt_logentries="--log-driver none"
   fi
 
-  if [ "$healthcheckDisable" == "true" ]; then
-    opt_healthcheck="--no-healthcheck"
-  fi
+  opt_healthcheck="$(get_healthcheck_opt "$service_name")"
 
   for port in "${publish[@]}"; do
     opt_publish="$opt_publish $publishFlag $port"
