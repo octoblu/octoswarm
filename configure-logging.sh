@@ -31,7 +31,7 @@ write_script() {
   local logentries_token="$1"
   echo "#!/bin/bash
 journalctl --utc --follow --output=short | awk -v token=$logentries_token '{ print token, \$0; fflush(); }' | ncat --ssl --ssl-verify data.logentries.com 20000" \
-  | tee "/run/octoswarm/${LOGENTRIES_SERVICE_NAME}.sh"
+  > "/run/octoswarm/${LOGENTRIES_SERVICE_NAME}.sh"
 }
 
 make_executable() {
@@ -47,7 +47,7 @@ After=systemd-networkd.service
 Restart=always
 ExecStart=/bin/bash /run/octoswarm/${LOGENTRIES_SERVICE_NAME}.sh
 [Install]
-WantedBy=multi-user.target" | tee "/run/octoswarm/${LOGENTRIES_SERVICE_NAME}.service"
+WantedBy=multi-user.target" > "/run/octoswarm/${LOGENTRIES_SERVICE_NAME}.service"
 }
 
 start_unit() {
