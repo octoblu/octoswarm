@@ -103,7 +103,6 @@ main() {
       -o /usr/local/bin/whalebrew && \
       chmod +x /usr/local/bin/whalebrew
   fi
-
   brew update
   brew reinstall octoswarm
   brew link --overwrite octoswarm

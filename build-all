@@ -4,7 +4,6 @@ build_and_install() {
   local version="$1"
    docker pull "octoblu/octoalpine:latest" \
    && docker pull "octoblu/octoalpine-docker:$version" \
-   && uninstall "$version" \
    && build "$version" \
    && install "$version"
 }
@@ -14,17 +13,23 @@ build() {
   docker build -t "local/octoswarm-$version" -f "./Dockerfile-$version" .
 }
 
-install() {
-  local version="$1"
-  whalebrew install "local/octoswarm-$version"
+ensure_whalebrew() {
+  local whalebrew_version="0.0.5"
+  if [ "$(whalebrew version)" != "Whalebrew $whalebrew_version" ]; then
+    curl -L \
+      "https://github.com/bfirsh/whalebrew/releases/download/$whalebrew_version/whalebrew-$(uname -s)-$(uname -m)" \
+      -o /usr/local/bin/whalebrew && \
+      chmod +x /usr/local/bin/whalebrew
+  fi  
 }
 
-uninstall() {
+install() {
   local version="$1"
-  whalebrew uninstall "octoswarm-$version" 2> /dev/null || return 0
+  whalebrew install "local/octoswarm-$version" --force
 }
 
 main() {
+  ensure_whalebrew
   build_and_install "1.13.1"
   build_and_install "17.03.0-ce"
 }
