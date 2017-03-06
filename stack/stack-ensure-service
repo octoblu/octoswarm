@@ -248,7 +248,7 @@ ensure_service() {
   withRegistryAuth="$(get_service_val "$service_name" '.docker.withRegistryAuth')"
   logentries="$(get_service_val "$service_name" '.docker.logentries')"
   envFile="$(get_service_val "$service_name" '.envFile')"
-  healthcheckDisable="$(get_service_val "$service_name" '.docker.healtcheck.disable')"
+  healthcheckDisable="$(get_service_val "$service_name" '.docker.healthcheck.disable')"
   local labelFlag='--label'
   local mountFlag='--mount'
   local publishFlag='--publish'
