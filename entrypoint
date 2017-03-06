@@ -272,7 +272,8 @@ main() {
   assert_required_env
   assert_octoswarm_command "$script_name"
   assert_stack
-  local stack_version="$(get_config_val '.octoswarm.version')"
+  local stack_version
+  stack_version="$(get_config_val '.octoswarm.version')"
   assert_required_stack_version "$stack_version"
   assert_latest_version
   copy_lecli_config

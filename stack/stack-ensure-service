@@ -348,7 +348,7 @@ ensure_service() {
   if [ "$logentries" == "true" ]; then
     opt_logentries="--log-driver logentries --log-opt logentries-token=$OCTOSWARM_LOGENTRIES_TOKEN"
   else
-    opt_logentries="--log-driver none"
+    opt_logentries="--log-driver json-file"
   fi
 
   opt_healthcheck="$(get_healthcheck_opt "$service_name")"

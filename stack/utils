@@ -34,6 +34,7 @@ confirm_please() {
 debug_core() {
   local debug_key="$1"; shift
   local cyan='\033[0;36m'
+  local white='\033[0;97m'
   local no_color='\033[0;0m'
   local exit_code
   if [ -z "$DEBUG" ]; then
@@ -44,8 +45,10 @@ debug_core() {
   if [ "$debug_key" == '*' ] && [ "$exit_code" != "0" ]; then
     return 0
   fi
+  local timestamp
+  timestamp="$(date +%s%3N)"
   local message="$@"
-  errecho "[${cyan}${debug_key}${no_color}]: $message"
+  errecho "[${cyan}${debug_key}${no_color}][${white}${timestamp}${no_color}]: $message"
 }
 
 debug() {
