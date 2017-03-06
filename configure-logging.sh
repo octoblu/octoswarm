@@ -30,7 +30,16 @@ create_octoswarm_dir() {
 write_script() {
   local logentries_token="$1"
   echo "#!/bin/bash
-journalctl --utc --follow --output=short | awk -v token=$logentries_token '{ print token, \$0; fflush(); }' | ncat --ssl --ssl-verify data.logentries.com 20000" \
+journalctl \\
+  --utc \\
+  --follow \\
+  --output=short \\
+  --catalog \\
+  --merge \\
+  --system \\
+  --since now \\
+  | awk -v token=$logentries_token '{ print token, \$0; fflush(); }' \\
+  | ncat --ssl --ssl-verify data.logentries.com 20000" \
   > "/run/octoswarm/${LOGENTRIES_SERVICE_NAME}.sh"
 }
 
@@ -75,7 +84,8 @@ main() {
   && write_script "$logentries_token" \
   && make_executable \
   && write_unit_file \
-  && enable_unit
+  && enable_unit \
+  && echo '* logentries logging installed!'
 }
 
 main "$@"
