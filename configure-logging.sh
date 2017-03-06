@@ -23,6 +23,10 @@ assert_logentries_token() {
   fi
 }
 
+install_nmap() {
+  apt install -y nmap
+}
+
 create_octoswarm_dir() {
   mkdir -p /run/octoswarm
 }
@@ -80,7 +84,8 @@ main() {
       ;;
   esac
   assert_logentries_token "$logentries_token"
-  create_octoswarm_dir \
+  install_nmap \
+  && create_octoswarm_dir \
   && write_script "$logentries_token" \
   && make_executable \
   && write_unit_file \
