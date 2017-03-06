@@ -1,0 +1,191 @@
+#!/bin/bash
+
+SCRIPT_NAME="stack-follow-instance"
+source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
+
+assert_machine_name(){
+  local machine_name="$1"
+  local service_name="$2"
+  local instance_name="$3"
+
+  if [ -z "$machine_name" ]; then
+    echo "could not find a machine running an instance named ${service_name}.${instance_name}"
+    exit 1
+  fi
+}
+
+assert_docker_container_name() {
+  local docker_container_name="$1"
+  if [ -z "$docker_container_name" ]; then
+    return 1
+  fi
+  return 0
+}
+
+assert_required_params(){
+  local service_name="$1"
+  local instance_name="$2"
+
+  if [ -n "$service_name" -a -n "$instance_name" ]; then
+    return 0
+  fi
+
+  usage
+  echo ""
+
+  if [ -z "$instance_name" ]; then
+    echo "instance_name is required"
+  fi
+
+  if [ -z "$service_name" ]; then
+    echo "service_name is required"
+  fi
+
+  exit 1
+}
+
+usage(){
+  echo "USAGE: $SCRIPT_NAME <service-name> <instance-name> [-- [docker-args]]"
+  echo ''
+  echo 'Arguments:'
+  echo '  -h, --help         print this help text'
+  echo '  -v, --version      print the version'
+  echo ''
+  echo 'docker-args are passed through to the "docker logs" command'
+  echo ''
+  echo "EXAMPLE: $SCRIPT_NAME slurry-exchange 1 -- --since=\"1h\" --timestamps"
+}
+
+get_service_line(){
+  local service_name="$1"
+  local instance_name="$2"
+
+  docker service ps "$service_name" \
+  | grep -v '\\_' \
+  | grep "\s${service_name}.${instance_name}\s"
+}
+
+get_docker_machine_name() {
+  local service_name="$1"
+  local instance_name="$2"
+
+  get_service_line "$service_name" "$instance_name" \
+  | awk '{print $4}'
+}
+
+get_docker_container_name() {
+  local machine_name="$1"
+  local instance_name="$2"
+  local docker_config
+  docker_config="$(docker-machine config "$machine_name" 2> /dev/null)"
+
+  docker $docker_config ps \
+  | grep "$instance_name" \
+  | awk '{print $1}'
+}
+
+get_docker_instance_name() {
+  local service_name="$1"
+  local instance_name="$2"
+  local prefix
+  local suffix
+  prefix="$(get_docker_instance_name_prefix "$service_name" "$instance_name")"
+  suffix="$(get_docker_instance_name_suffix "$service_name" "$instance_name")"
+
+  echo "$prefix.$suffix"
+}
+
+get_docker_instance_name_prefix() {
+  local service_name="$1"
+  local instance_name="$2"
+
+  echo "$service_name.$instance_name"
+}
+
+get_docker_instance_name_suffix() {
+  local service_name="$1"
+  local instance_name="$2"
+
+  get_service_line "$service_name" "$instance_name" \
+  | awk '{print $1}'
+}
+
+follow_instance() {
+  local service_name="$1"
+  local instance_name="$2"
+  local additional_args="$3"
+  local machine_name
+  local docker_instance_name
+  local docker_container_name
+  local docker_config
+
+  machine_name="$(get_docker_machine_name "$service_name" "$instance_name")"
+  assert_machine_name "$machine_name" "$service_name" "$instance_name" || return 1
+
+  docker_instance_name="$(get_docker_instance_name "$service_name" "$instance_name")"
+  docker_container_name="$(get_docker_container_name "$machine_name" "$docker_instance_name")"
+
+  assert_docker_container_name "$docker_container_name" || return 1
+
+  echo "Following: $service_name.$instance_name ($docker_container_name)"
+  docker_config="$(docker-machine config "$machine_name" 2> /dev/null)"
+  docker $docker_config logs --follow $additional_args "$docker_container_name" \
+  || echo "Error following: $service_name.$instance_name"
+}
+
+try_follow_instance() {
+  local service_name="$1"
+  local instance_name="$2"
+  local additional_args="$3"
+  local attempt=0
+	while [ $attempt -lt 10 ]; do
+		follow_instance "$service_name" "$instance_name" "$additional_args" && return 0
+		echo "$attempt/10 of following instance, retrying"
+		let "attempt+=1"
+	done
+	echo 'failed to follow instance'
+	exit 1
+}
+
+main() {
+  local service_name;
+  local instance_name;
+  local additional_args;
+
+  while [ "$1" != "" ]; do
+    local param="$1"
+    local value="$2"
+    case "$param" in
+      -h | --help)
+        usage
+        exit 0
+        ;;
+      -v | --version)
+        version
+        exit 0
+        ;;
+      *)
+        if [ "${param::1}" == '-' -a "$param" != "--" ]; then
+          echo "ERROR: unknown parameter \"$param\""
+          usage
+          exit 1
+        fi
+        if [ -z "$service_name" ]; then
+          service_name="$param"
+        elif [ -z "$instance_name" ]; then
+          instance_name="$param"
+        elif [ "$param" == "--" ]; then
+          shift
+          additional_args="$@"
+          break
+        fi
+        ;;
+    esac
+    shift
+  done
+
+  assert_required_params "$service_name" "$instance_name"
+  try_follow_instance "$service_name" "$instance_name" "$additional_args"
+}
+
+main "$@"
