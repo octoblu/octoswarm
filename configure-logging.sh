@@ -50,12 +50,10 @@ ExecStart=/bin/bash /run/octoswarm/${LOGENTRIES_SERVICE_NAME}.sh
 WantedBy=multi-user.target" > "/run/octoswarm/${LOGENTRIES_SERVICE_NAME}.service"
 }
 
-start_unit() {
-  systemctl start "${LOGENTRIES_SERVICE_NAME}.service"
-}
-
 enable_unit() {
-  systemctl enable "/run/octoswarm/${LOGENTRIES_SERVICE_NAME}.service"
+  systemctl link "/run/octoswarm/${LOGENTRIES_SERVICE_NAME}.service" \
+   && systemctl enable "${LOGENTRIES_SERVICE_NAME}.service" \
+   && systemctl start "${LOGENTRIES_SERVICE_NAME}.service"
 }
 
 main() {
@@ -75,8 +73,7 @@ main() {
   && write_script "$logentries_token" \
   && make_executable \
   && write_unit_file \
-  && enable_unit \
-  && start_unit
+  && enable_unit
 }
 
 main "$@"
