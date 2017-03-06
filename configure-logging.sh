@@ -36,7 +36,7 @@ journalctl --utc --follow --output=short \\
 }
 
 make_executable() {
-  chmod +x /run/octoswarm/logentries_token.sh
+  chmod +x /run/octoswarm/log-to-logentries.sh
 }
 
 write_unit_file() {
