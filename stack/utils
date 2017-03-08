@@ -84,6 +84,10 @@ get_nodes_by_role_unverified() {
   docker node ls --filter "role = $role" | grep Ready | grep -v HOSTNAME | sed 's/\*//' | awk '{print $2}'
 }
 
+get_node_ids() {
+  docker node ls | grep Ready | grep -v HOSTNAME | sed 's/\*//' | awk '{print $2}'
+}
+
 get_nodes_by_role() {
   local role="$1"
   if [ -z "$STACK_DIR" ]; then

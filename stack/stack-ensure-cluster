@@ -49,8 +49,8 @@ ensure_managers_elb() {
       debug "elb $elb_name exists"
     fi
     debug "adding to elb $elb_name"
-    for manager_id in $(get_manager_ids); do
-      stack add-to-elb "$manager_id" "$elb_name" || fatal 'unable to add to elb'
+    for node_id in $(get_node_ids); do
+      stack add-to-elb "$node_id" "$elb_name" || fatal 'unable to add to elb'
     done
   done
 }

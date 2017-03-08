@@ -343,7 +343,6 @@ ensure_service() {
   fi
   if [ "$traefikHost" != "" ]; then
     local frontendRule="Host:$traefikHost"
-    local traefikNetwork="$(get_service_val "$service_name" '.traefik.network')"
     if [ "$traefikPathPrefix" != "" ]; then
       frontendRule="${frontendRule};PathPrefix:${traefikPathPrefix}"
     fi
@@ -378,6 +377,7 @@ ensure_service() {
     opt_env_add="$(get_env_add_options "$service_name" "$envFile")"
     opt_env_rm="$(get_env_rm_options "$service_name" "$envFile")"
     run_cmd docker service update \
+      --force \
       $opt_docker_sock \
       $opt_role \
       $opt_replicas \

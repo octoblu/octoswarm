@@ -27,7 +27,7 @@ remove_services() {
     if [ "$name" == "" ]; then
       fatal "Could not parse service name"
     fi
-    docker service rm "$name" || fatal "unable to remove service $name"
+    docker service rm "$name" || warn "unable to remove service $name"
   done
 }
 
