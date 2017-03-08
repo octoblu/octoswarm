@@ -228,7 +228,7 @@ ensure_network() {
   docker network inspect "$network_name" &> /dev/null
   if [ "$?" != "0" ]; then
     debug "creating network $network_name"
-    run_cmd docker network create --driver overlay "$network_name"  --attachable --subnet 10.10.9.0/24
+    run_cmd docker network create --driver overlay "$network_name"  --attachable
     # sleepy time for docker
     sleep 10
   fi
