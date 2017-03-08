@@ -220,11 +220,15 @@ has_same_replicas() {
 }
 
 ensure_network() {
-  local service_name="$1"
-  docker network inspect "$service_name" &> /dev/null
+  local network_name="$1"
+  if [ "$network_name" == "" ]; then
+    fatal "Invalid network name '$network_name'"
+    return 1
+  fi
+  docker network inspect "$network_name" &> /dev/null
   if [ "$?" != "0" ]; then
-    debug "creating network $service_name"
-    run_cmd docker network create --driver overlay "$service_name"  --attachable --subnet 10.10.9.0/24
+    debug "creating network $network_name"
+    run_cmd docker network create --driver overlay "$network_name"  --attachable --subnet 10.10.9.0/24
     # sleepy time for docker
     sleep 10
   fi
@@ -247,10 +251,10 @@ ensure_service() {
   local opt_logentries
   local opt_image
   local opt_healthcheck
+  local opt_network
   local service_name
   local count
   local docker_repo
-  local network
   local mode
   local image
   local role
@@ -267,18 +271,20 @@ ensure_service() {
   beekeeper="$(get_service_val "$service_name" '.beekeeper.update')"
   count="$(get_service_val "$service_name" '.count')"
   docker_repo="$(get_service_val "$service_name" '.docker.repo')"
-  network="$(get_service_val "$service_name" '.docker.network')"
   mode="$(get_service_val "$service_name" '.docker.mode')"
   image="$(get_service_val "$service_name" '.docker.image')"
   role="$(get_service_val "$service_name" '.docker.role')"
   dockerSock="$(get_service_val "$service_name" '.docker.sock')"
   publish=( $(get_service_array_raw "$service_name" '.docker.publish[]') )
   traefikHost="$(get_service_val "$service_name" '.traefik.host')"
+  traefikNetwork="$(get_service_val "$service_name" '.traefik.network')"
   traefikPathPrefix="$(get_service_val "$service_name" '.traefik.pathPrefix')"
   runOptions=( $(get_service_array_raw "$service_name" '.docker.runOptions[]') )
+  networkOptions=( $(get_service_array_raw "$service_name" '.docker.networks[]') )
   withRegistryAuth="$(get_service_val "$service_name" '.docker.withRegistryAuth')"
   logentries="$(get_service_val "$service_name" '.docker.logentries')"
   envFile="$(get_service_val "$service_name" '.envFile')"
+  local networkFlag='--network'
   local labelFlag='--label'
   local mountFlag='--mount'
   local publishFlag='--publish'
@@ -293,9 +299,6 @@ ensure_service() {
   fi
   if [ "$envFile" == "" ]; then
     envFile="$STACK_ENV_DIR/$service_name.env"
-  fi
-  if [ "$network" == "" ]; then
-    network="traefik"
   fi
   if [ "$mode" == "" ]; then
     mode="replicated"
@@ -340,10 +343,11 @@ ensure_service() {
   fi
   if [ "$traefikHost" != "" ]; then
     local frontendRule="Host:$traefikHost"
+    local traefikNetwork="$(get_service_val "$service_name" '.traefik.network')"
     if [ "$traefikPathPrefix" != "" ]; then
       frontendRule="${frontendRule};PathPrefix:${traefikPathPrefix}"
     fi
-    opt_traefik="$labelFlag traefik.frontend.rule=${frontendRule} $labelFlag traefik.port=80 $labelFlag traefik.docker.network=traefik"
+    opt_traefik="$labelFlag traefik.frontend.rule=${frontendRule} $labelFlag traefik.port=80 $labelFlag traefik.docker.network=$traefikNetwork"
   fi
   if [ "$logentries" == "true" ]; then
     opt_logentries="--log-driver logentries --log-opt logentries-token=$OCTOSWARM_LOGENTRIES_TOKEN"
@@ -361,9 +365,9 @@ ensure_service() {
     opt_run="$opt_run $option"
   done
 
-  debug "publish $opt_publish run $opt_run"
-
-  ensure_network "$network"
+  for network in "${networkOptions[@]}"; do
+    opt_network="$opt_network $networkFlag $network"
+  done
 
   run_cmd docker login --username "$DOCKER_HUB_USERNAME" --password "$DOCKER_HUB_PASSWORD" > /dev/null
   if [ "$isUpdate" == "true" ]; then
@@ -391,9 +395,15 @@ ensure_service() {
     if [ -f "$envFile" ]; then
       opt_env="--env-file $envFile"
     fi
+
+    debug 'ensuring networks'
+    for network in "${networkOptions[@]}"; do
+      ensure_network "$network"
+    done
+
     run_cmd docker service create \
       --name "$service_name" \
-      --network "$network" \
+      $opt_network \
       $opt_mode \
       $opt_replicas \
       $opt_publish \
