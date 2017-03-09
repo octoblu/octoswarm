@@ -39,6 +39,9 @@ usage(){
   echo '  -h, --help               print this help text'
   echo '  -t, --ec2-instance-type  ec2 instance type to spin up'
   echo '                           (default: t2.medium)'
+  echo '  --docker-version         docker version to install'
+  echo '                           (default: latest)'
+  echo '  --ec2-tags               ec2 tags (comma delimited)'
   echo '  -v, --version            print the version'
   echo 'Environment:'
   echo '  DEBUG                    print debug output'
@@ -46,6 +49,8 @@ usage(){
 
 main() {
   local ec2_instance_type="t2.medium"
+  local docker_version
+  local ec2_tags
 
   while [ "$1" != "" ]; do
     local param="$1"
@@ -57,6 +62,14 @@ main() {
         ;;
       -t | --ec2-instance-type)
         ec2_instance_type="$value"
+        shift
+        ;;
+      --ec2-tags)
+        ec2_tags="$value"
+        shift
+        ;;
+      --docker-version)
+        docker_version="$value"
         shift
         ;;
       -v | --version)
@@ -84,7 +97,9 @@ main() {
   machine_id="$(swarm-generate-machine-id manager)"
 
   stack create-machine \
+    --ec2-tags "$ec2_tags" \
     --ec2-instance-type "$ec2_instance_type" \
+    --docker-version "$docker_version" \
     "$machine_id" || fatal 'unable to create machine'
 
   swarm-join-manager \

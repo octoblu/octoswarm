@@ -48,9 +48,13 @@ get_interface() {
 create_stack(){
   debug 'about to create stack'
   local ec2_instance_type
+  local docker_version
   local machine_id
   local interface
+  local ec2_tags
   ec2_instance_type="$(get_config_val '.managers.instanceType')"
+  docker_version="$(get_config_val '.octoswarm.dockerVersion')"
+  ec2_tags="$(get_ec2_tags_by_role 'manager')"
 
   echo "Stack doesn't exist, we are going to create the first manager..."
   say_yes || fatal 'Exiting due to human fear.'
@@ -59,6 +63,8 @@ create_stack(){
   debug "machine_id $machine_id"
 
   stack create-machine \
+    --ec2-tags "$ec2_tags" \
+    --docker-version "$docker_version" \
     --ec2-instance-type "$ec2_instance_type" \
     "$machine_id" || fatal 'unable to create machine'
 

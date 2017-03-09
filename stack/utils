@@ -307,3 +307,20 @@ script_directory(){
 function join_by {
   local IFS="$1"; shift; echo "$*";
 }
+
+function get_ec2_tags_by_role {
+  local role="$1"
+
+  local ec2_tags
+  local envName="$(get_config_val '.stackEnvName')"
+  local stackName="$(get_config_val '.stackName')"
+
+  local rebootable="false"
+  if [ "$role" == "worker" ]; then
+    rebootable="true"
+  fi
+
+  ec2_tags="octoswarm:role,$role,octoswarm:stack,$envName-$stackName,methodical-monkey:rebootable,$rebootable"
+
+  echo "$ec2_tags"
+}

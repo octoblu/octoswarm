@@ -58,6 +58,9 @@ usage(){
   echo '  -h, --help               print this help text'
   echo '  -t, --ec2-instance-type  ec2 instance type to spin up'
   echo '                           (default: t2.medium)'
+  echo '  --docker-version         docker version to install'
+  echo '                           (default: latest)'
+  echo '  --ec2-tags               ec2 tags (comma delimited)'
   echo '  -v, --version            print the version'
   echo 'Environment:'
   echo '  DEBUG                    print debug output'
@@ -66,6 +69,8 @@ usage(){
 main() {
   local machine_id
   local ec2_instance_type="t2.medium"
+  local docker_version
+  local ec2_tags
 
   while [ "$1" != "" ]; do
     local param="$1"
@@ -77,6 +82,14 @@ main() {
         ;;
       -t | --ec2-instance-type)
         ec2_instance_type="$value"
+        shift
+        ;;
+      --ec2-tags)
+        ec2_tags="$value"
+        shift
+        ;;
+      --docker-version)
+        docker_version="$value"
         shift
         ;;
       -v | --version)
@@ -111,8 +124,22 @@ main() {
 
   echo "Creating $machine_id"
 
+  local opt_engine_install_url
+  if [ "$docker_version" == "1.13.1" ]; then
+    opt_engine_install_url='--engine-install-url "https://packages.docker.com/1.13/install.sh"'
+  else
+    echo "WARNING: docker-machine will use the latest version of docker"
+  fi
+
+  local opt_amazonec2_tags
+  if [ "$ec2_tags" != "" ]; then
+    opt_amazonec2_tags="--amazonec2-tags $ec2_tags"
+  fi
+
   create_machine "$machine_id" \
+    $opt_engine_install_url \
     --driver amazonec2 \
+    $opt_amazonec2_tags \
     --amazonec2-access-key "$AWS_ACCESS_KEY_ID" \
     --amazonec2-secret-key "$AWS_SECRET_ACCESS_KEY" \
     --amazonec2-region "us-west-2" \

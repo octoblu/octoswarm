@@ -69,9 +69,14 @@ ensure_managers() {
   local count
   local expected_count
   local ec2_instance_type
+  local docker_version
+  local ec2_tags
   count="$(get_managers_count)"
   expected_count="$(get_config_val '.managers.count')"
   ec2_instance_type="$(get_config_val '.managers.instanceType')"
+  docker_version="$(get_config_val '.octoswarm.dockerVersion')"
+  ec2_tags="$(get_ec2_tags_by_role 'manager')"
+
   if [ "$count" -gt "$expected_count" ]; then
     debug "The current count of managers is greater than expected count"
     debug "SKIPPING..."
@@ -91,6 +96,8 @@ ensure_managers() {
     echo "Manager count insufficient, creating manager #$real_count..."
     say_yes || continue
     stack create-manager \
+      --ec2-tags "$ec2_tags" \
+      --docker-version "$docker_version" \
       --ec2-instance-type "$ec2_instance_type" &
   done
   debug 'waiting for managers to boot'
@@ -101,9 +108,14 @@ ensure_workers() {
   local count
   local expected_count
   local ec2_instance_type
+  local docker_version
+  local ec2_tags
+
   count="$(get_workers_count)"
   expected_count="$(get_config_val '.workers.count')"
   ec2_instance_type="$(get_config_val '.workers.instanceType')"
+  docker_version="$(get_config_val '.octoswarm.dockerVersion')"
+  ec2_tags="$(get_ec2_tags_by_role 'worker')"
 
   if [ "$count" -gt "$expected_count" ]; then
     debug "The current count of workers is greater than expected count"
@@ -126,6 +138,8 @@ ensure_workers() {
     echo "Worker count insufficient, creating worker #$real_count..."
     say_yes || continue
     stack create-worker \
+      --ec2-tags "$ec2_tags" \
+      --docker-version "$docker_version" \
       --ec2-instance-type "$ec2_instance_type" &
   done
   debug 'waiting for workers to boot'
