@@ -27,6 +27,15 @@ usage(){
   echo '  PINGDOM_APP_KEY       (required)'
   echo '  PINGDOM_USERNAME      (required)'
   echo '  PINGDOM_PASSWORD      (required)'
+  echo '  OCTOSWARM_LOGENTRIES_ACCOUNT_RESOURCE_ID (required)'
+  echo '  OCTOSWARM_LOGENTRIES_OWNER_API_KEY_ID    (required)'
+  echo '  OCTOSWARM_LOGENTRIES_OWNER_API_KEY       (required)'
+  echo '  OCTOSWARM_LOGENTRIES_RW_API_KEY          (required)'
+  echo '  OCTOSWARM_LOGENTRIES_LOG_ID              (required)'
+  echo '  OCTOSWARM_LOGENTRIES_TOKEN               (required)'
+  echo '  OCTOSWARM_LOGENTRIES_SERVER_TOKEN        (required)'
+  echo '  OCTOSWARM_GITHUB_API_TOKEN               (required)'
+  echo '  OCTOSWARM_MACHINE                        (optional)'
   echo ''
   echo 'Avialable Commands:'
   echo ''
@@ -242,6 +251,12 @@ get_machine_id() {
   local machine_id
   local machines
   update_cert_permissions
+  if [ -n "$OCTOSWARM_MACHINE" ]; then
+    validate_machine_id "$OCTOSWARM_MACHINE" || return 1
+    warn "Using $OCTOSWARM_MACHINE"
+    echo "$OCTOSWARM_MACHINE"
+    return 0
+  fi
   machines=$(get_manager_machine_ids)
   for machine_dir in $machines; do
     machine_id="$(basename "$machine_dir")"
@@ -261,6 +276,9 @@ get_machine_id() {
 get_commands() {
   echo "octoswarm docker"
   echo "octoswarm docker-machine"
+  echo "octoswarm fish"
+  echo "octoswarm bash"
+  echo "octoswarm sen"
   for file in `ls "$OCTOSWARM_BIN_DIR"`; do
     echo "octoswarm ${file/${OCTOSWARM_BIN_DIR}/}"
   done
