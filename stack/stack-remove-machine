@@ -2,6 +2,7 @@
 
 SCRIPT_NAME="stack-remove-machine"
 
+# shellcheck disable=SC1091
 source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 
 assert_required_params() {

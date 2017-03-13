@@ -2,6 +2,7 @@
 
 SUPPORTED_VERSION="10.0.0"
 
+# shellcheck disable=SC1091
 source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 
 debug() {
@@ -228,6 +229,7 @@ connect_to_machine() {
   fi
   if [ "$found_machine_code" != "0" ]; then
     errecho "$machine_id"
+    errecho "*HINT* you might need to restart Docker for Mac"
     fatal "Unable to connect to a machine"
   fi
 
@@ -253,7 +255,7 @@ get_machine_id() {
   update_cert_permissions
   if [ -n "$OCTOSWARM_MACHINE" ]; then
     validate_machine_id "$OCTOSWARM_MACHINE" || return 1
-    warn "Using $OCTOSWARM_MACHINE"
+    debug "using $OCTOSWARM_MACHINE because OCTOSWARM_MACHINE is set"
     echo "$OCTOSWARM_MACHINE"
     return 0
   fi

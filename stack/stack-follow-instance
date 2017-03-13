@@ -1,6 +1,8 @@
 #!/bin/bash
 
 SCRIPT_NAME="stack-follow-instance"
+
+# shellcheck disable=SC1091
 source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 
 assert_machine_name(){
