@@ -276,6 +276,7 @@ get_machine_id() {
 }
 
 get_commands() {
+  echo "octoswarm ctop"
   echo "octoswarm docker"
   echo "octoswarm docker-machine"
   echo "octoswarm fish"
