@@ -25,35 +25,8 @@ assert_required_config() {
   require_config_value '.services[]'
 }
 
-get_manager_elbs() {
-  check_config_value ".managers.elbs[]"
-  local has_elbs="$?"
-  if [ "$has_elbs" == "0" ]; then
-    get_config_array '.managers.elbs[]'
-  fi
-}
-
 ensure_managers_elb() {
-  debug 'ensuring managers elb'
-  local elbs=( $(get_manager_elbs) )
-  local elb_name
-  for elb in "${elbs[@]}"; do
-    elb_name="$(echo "$elb" | jq --raw-output ".")"
-    elb_exists "$elb_name"
-    local exists=$?
-    if [ "$exists" == "1" ]; then
-      debug "elb $elb_name does not exist"
-      echo "ELB count insufficient, creating elb ($elb_name)..."
-      say_yes || continue
-      stack create-elb "$elb_name"
-    else
-      debug "elb $elb_name exists"
-    fi
-    debug "adding to elb $elb_name"
-    for node_id in $(get_node_ids); do
-      stack add-to-elb "$node_id" "$elb_name" || fatal 'unable to add to elb'
-    done
-  done
+  stack ensure-elb
 }
 
 ensure_machines() {

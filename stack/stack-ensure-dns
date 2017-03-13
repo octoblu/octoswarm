@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SCRIPT_NAME='stack-auto-configure-dns'
+SCRIPT_NAME='stack-ensure-dns'
 
 # shellcheck disable=SC1091
 source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
