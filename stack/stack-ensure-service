@@ -108,29 +108,33 @@ get_healthcheck_opt() {
   local healthcheckTimeout
   local healthcheckInterval
   local healthcheckCmd
+  local docker_version
+  docker_version="$(get_config_val '.octoswarm.dockerVersion')"
   healthcheckDisable="$(get_service_val "$service_name" '.docker.healthcheck.disable')"
   healthcheckTimeout="$(get_service_val "$service_name" '.docker.healthcheck.timeout')"
   healthcheckInterval="$(get_service_val "$service_name" '.docker.healthcheck.interval')"
   healthcheckCmd="$(get_service_val "$service_name" '.docker.healthcheck.cmd')"
   healthcheckRetries="$(get_service_val "$service_name" '.docker.healthcheck.retries')"
 
-  if [ "$healthcheckDisable" == "true" ]; then
-    opt_healthcheck="--no-healthcheck"
-  else
-    if [ "$healthcheckCmd" != "" ]; then
-      opt_healthcheck="$opt_healthcheck --health-cmd $healthcheckCmd"
+  if [ "$docker_version" != "1.12.6" ]; then
+    if [ "$healthcheckDisable" == "true" ]; then
+      opt_healthcheck="--no-healthcheck"
+    else
+      if [ "$healthcheckCmd" != "" ]; then
+        opt_healthcheck="$opt_healthcheck --health-cmd $healthcheckCmd"
+      fi
+      if [ "$healthcheckTimeout" != "" ]; then
+        opt_healthcheck="$opt_healthcheck --health-timeout $healthcheckTimeout"
+      fi
+      if [ "$healthcheckInterval" != "" ]; then
+        opt_healthcheck="$opt_healthcheck --health-interval $healthcheckInterval"
+      fi
+      if [ "$healthcheckRetries" != "" ]; then
+        opt_healthcheck="$opt_healthcheck --health-retries $healthcheckRetries"
+      fi
     fi
-    if [ "$healthcheckTimeout" != "" ]; then
-      opt_healthcheck="$opt_healthcheck --health-timeout $healthcheckTimeout"
-    fi
-    if [ "$healthcheckInterval" != "" ]; then
-      opt_healthcheck="$opt_healthcheck --health-interval $healthcheckInterval"
-    fi
-    if [ "$healthcheckRetries" != "" ]; then
-      opt_healthcheck="$opt_healthcheck --health-retries $healthcheckRetries"
-    fi
+    echo "$opt_healthcheck"
   fi
-  echo "$opt_healthcheck"
 }
 
 get_service_spec_no_cache() {
