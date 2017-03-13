@@ -287,10 +287,6 @@ get_commands() {
   done
 }
 
-get_vim_ready() {
-  touch /.viminfo && chmod 777 /.viminfo
-}
-
 run_script() {
   local script="$1"; shift
   "$script" "$@"
@@ -340,7 +336,6 @@ main() {
   fi
 
   become_a_real_boy
-  get_vim_ready
 
   assert_required_env
   assert_octoswarm_command "$script_name"
