@@ -20,7 +20,7 @@ ensure_whalebrew() {
       "https://github.com/bfirsh/whalebrew/releases/download/$whalebrew_version/whalebrew-$(uname -s)-$(uname -m)" \
       -o /usr/local/bin/whalebrew && \
       chmod +x /usr/local/bin/whalebrew
-  fi  
+  fi
 }
 
 install() {
@@ -29,9 +29,10 @@ install() {
 }
 
 main() {
-  ensure_whalebrew
-  build_and_install "1.13.1"
-  build_and_install "17.03.0-ce"
+  ensure_whalebrew \
+  && build_and_install "1.12.6" \
+  && build_and_install "1.13.1" \
+  && build_and_install "17.03.0-ce"
 }
 
 main "$@"

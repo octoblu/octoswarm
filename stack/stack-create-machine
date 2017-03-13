@@ -125,7 +125,9 @@ main() {
   echo "Creating $machine_id"
 
   local opt_engine_install_url
-  if [ "$docker_version" == "1.13.1" ]; then
+  if [ "$docker_version" == "1.12.6" ]; then
+    opt_engine_install_url='--engine-install-url "https://packages.docker.com/1.12/install.sh"'
+  elif [ "$docker_version" == "1.13.1" ]; then
     opt_engine_install_url='--engine-install-url "https://packages.docker.com/1.13/install.sh"'
   else
     echo "WARNING: docker-machine will use the latest version of docker"

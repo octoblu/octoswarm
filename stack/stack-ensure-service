@@ -221,14 +221,20 @@ has_same_replicas() {
 
 ensure_network() {
   local network_name="$1"
+  local opt_attachable
+  local docker_version
+  docker_version="$(get_config_val '.octoswarm.dockerVersion')"
   if [ "$network_name" == "" ]; then
     fatal "Invalid network name '$network_name'"
     return 1
   fi
+  if [ "$docker_version" != "1.12.6" ]; then
+    opt_attachable="--attachable"
+  fi
   docker network inspect "$network_name" &> /dev/null
   if [ "$?" != "0" ]; then
     debug "creating network $network_name"
-    run_cmd docker network create --driver overlay "$network_name"  --attachable
+    run_cmd docker network create --driver overlay "$network_name" $opt_attachable
     # sleepy time for docker
     sleep 10
   fi
@@ -267,6 +273,9 @@ ensure_service() {
   local logentries
   local envFile
   local beekeeper
+  local docker_version
+  local opt_force
+  docker_version="$(get_config_val '.octoswarm.dockerVersion')"
   service_name="$(get_service_val "$service_name" '.name')"
   beekeeper="$(get_service_val "$service_name" '.beekeeper.update')"
   count="$(get_service_val "$service_name" '.count')"
@@ -348,10 +357,13 @@ ensure_service() {
     fi
     opt_traefik="$labelFlag traefik.frontend.rule=${frontendRule} $labelFlag traefik.port=80 $labelFlag traefik.docker.network=$traefikNetwork"
   fi
-  if [ "$logentries" == "true" ]; then
-    opt_logentries="--log-driver logentries --log-opt logentries-token=$OCTOSWARM_LOGENTRIES_TOKEN"
-  else
-    opt_logentries="--log-driver json-file"
+  if [ "$docker_version" != "1.12.6" ]; then
+    opt_force="--force"
+    if [ "$logentries" == "true" ]; then
+      opt_logentries="--log-driver logentries --log-opt logentries-token=$OCTOSWARM_LOGENTRIES_TOKEN"
+    else
+      opt_logentries="--log-driver json-file"
+    fi
   fi
 
   opt_healthcheck="$(get_healthcheck_opt "$service_name")"
@@ -377,7 +389,7 @@ ensure_service() {
     opt_env_add="$(get_env_add_options "$service_name" "$envFile")"
     opt_env_rm="$(get_env_rm_options "$service_name" "$envFile")"
     run_cmd docker service update \
-      --force \
+      $opt_force \
       $opt_docker_sock \
       $opt_role \
       $opt_replicas \
@@ -393,7 +405,13 @@ ensure_service() {
   else
     debug 'creating service'
     if [ -f "$envFile" ]; then
-      opt_env="--env-file $envFile"
+      if [ "$docker_version" == "1.12.6" ]; then
+        for envOption in $(get_env_from_file "$envFile"); do
+          opt_env="$opt_env --env $envOption"
+        done
+      else
+        opt_env="--env-file $envFile"
+      fi
     fi
 
     debug 'ensuring networks'
