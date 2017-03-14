@@ -10,7 +10,7 @@ build_and_install() {
 
 build() {
   local version="$1"
-  docker build -t "local/octoswarm-$version" -f "./Dockerfile-$version" .
+  docker build -t "local/octoswarm-$version" -f "$version/Dockerfile" .
 }
 
 ensure_whalebrew() {
