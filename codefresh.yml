@@ -1,0 +1,44 @@
+version: '1.0'
+steps:
+
+  build_image_1_12_6:
+    type: build
+    description: Building the image...
+    working_directory: ${{main_clone}}
+    dockerfile: 1.12.6/Dockerfile
+    image_name: ${{CF_REPO_OWNER}}/${{CF_REPO_NAME}}
+    tag: '1.12.6-${{CF_BRANCH}}'
+
+  push_to_registry_1_12_6:
+    title: Pushing to Docker Registry (with credentials)
+    type: push
+    candidate: '${{build_image_1_12_6}}'
+    tag: '1.12.6-${{CF_BRANCH}}'
+
+  build_image_1_13_1:
+    type: build
+    description: Building the image...
+    working_directory: ${{main_clone}}
+    dockerfile: 1.13.1/Dockerfile
+    image_name: ${{CF_REPO_OWNER}}/${{CF_REPO_NAME}}
+    tag: '1.13.1-${{CF_BRANCH}}'
+
+  push_to_registry_1_13_1:
+    title: Pushing to Docker Registry (with credentials)
+    type: push
+    candidate: '${{build_image_1_13_1}}'
+    tag: '1.13.1-${{CF_BRANCH}}'
+
+  build_image_17_03_0_ce:
+    type: build
+    description: Building the image...
+    working_directory: ${{main_clone}}
+    dockerfile: 17.03.0-ce/Dockerfile
+    image_name: ${{CF_REPO_OWNER}}/${{CF_REPO_NAME}}
+    tag: '17.03.0-ce-${{CF_BRANCH}}'
+
+  push_to_registry_17_03_0_ce:
+    title: Pushing to Docker Registry (with credentials)
+    type: push
+    candidate: '${{build_image_17_03_0_ce}}'
+    tag: '17.03.0-ce-${{CF_BRANCH}}'
