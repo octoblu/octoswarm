@@ -162,8 +162,14 @@ assert_latest_version() {
   local latest_version="$(curl --fail --silent "https://sqrtofsaturn:$OCTOSWARM_GITHUB_API_TOKEN@api.github.com/repos/octoblu/octoswarm/releases/latest" | jq --raw-output '.tag_name' | tr -d 'v')"
 
   if [ "$current_version" != "$latest_version" ]; then
-    errecho "octoswarm is not up to date. Current Version: $current_version, Latest Version: $latest_version. Cowardly refusing to do anything."
-    fatal 'Please run `octoswarm --upgrade` to get the latest version.'
+    errecho "## octoswarm is not up to date."
+    errecho "## Current Version: $current_version"
+    errecho "## Latest Version:'$latest_version"
+    errecho ''
+    errecho '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+    errecho '! Please run `octoswarm --upgrade` to get the latest version. !'
+    errecho '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+    errecho ''
   fi
 }
 
