@@ -35,6 +35,12 @@ configure_logging() {
   run_cmd docker-machine ssh "$machine_name" "$(get_configure_logging_command)" || return 1
 }
 
+unconfigure_logging() {
+  local machine_name="$1"
+  local cmd="sudo systemctl stop log-to-logentires.service && sudo systemctl disable log-to-logentires.service"
+  run_cmd docker-machine ssh "$machine_name" "$cmd" &> /dev/null 
+}
+
 main() {
   local machine_name
   while [ "$1" != "" ]; do
@@ -68,8 +74,8 @@ main() {
   # shellcheck disable=SC2016
   is_stack_empty || fatal 'Not initialized, run `create-cluster`'
 
- warn "ensure-machine currently does nothing"
-  # configure_logging "$machine_name"
+ #warn "ensure-machine currently does nothing"
+ unconfigure_logging "$machine_name"
 }
 
 main "$@"
