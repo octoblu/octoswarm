@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SCRIPT_NAME="stack-follow-instance"
+SCRIPT_NAME="stack-logentries"
 # shellcheck disable=SC1091
 source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 
@@ -80,7 +80,7 @@ get_docker_container_name() {
   local docker_config
   docker_config="$(docker-machine config "$machine_name" 2> /dev/null)"
 
-  docker $docker_config ps --no-trunc \
+  docker "$docker_config" ps --no-trunc \
   | grep "$instance_name" \
   | awk '{print $1}'
 }

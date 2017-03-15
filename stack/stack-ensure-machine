@@ -24,7 +24,8 @@ assert_required_params() {
 }
 
 get_configure_logging_command() {
-  local tag="$(get_tag_or_branch)"
+  local tag
+  tag="$(get_tag_or_branch)"
   local download_url="https://raw.githubusercontent.com/octoblu/octoswarm/$tag/configure-logging.sh"
   echo "sudo curl -fsSL $download_url -o /run/configure-logging.sh && sudo bash /run/configure-logging.sh $OCTOSWARM_LOGENTRIES_SERVER_TOKEN"
 }
@@ -64,9 +65,11 @@ main() {
 
   assert_required_params "$machine_name"
 
+  # shellcheck disable=SC2016
   is_stack_empty || fatal 'Not initialized, run `create-cluster`'
 
-  configure_logging "$machine_name"
+ warn "ensure-machine currently does nothing"
+  # configure_logging "$machine_name"
 }
 
 main "$@"
