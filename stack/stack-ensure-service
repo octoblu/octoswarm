@@ -62,7 +62,7 @@ get_env_add_options() {
     done
     if [ "$exists" == "false" ]; then
       debug "needs env: $env_line"
-      warn "Adding env $actual_env_var for $service_name"
+      warn "Adding env $env_line for $service_name"
       opt_env_add="$opt_env_add --env-add $env_line"
     fi
   done
