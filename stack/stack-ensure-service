@@ -296,7 +296,7 @@ ensure_service() {
   haproxyEnabled="$(get_service_val "$service_name" '.haproxy.enabled')"
   haproxyHost="$(get_service_val "$service_name" '.haproxy.host')"
   haproxyPort="$(get_service_val "$service_name" '.haproxy.port')"
-  haproxyProtocol="$(get_service_val "$service_name" '.haproxy.protool')"
+  haproxyProtocol="$(get_service_val "$service_name" '.haproxy.protocol')"
   haproxyHealthcheckPath="$(get_service_val "$service_name" '.haproxy.healthcheck_path')"
   traefikHost="$(get_service_val "$service_name" '.traefik.host')"
   traefikNetwork="$(get_service_val "$service_name" '.traefik.network')"
