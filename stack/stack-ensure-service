@@ -282,6 +282,7 @@ ensure_service() {
   local beekeeper
   local docker_version
   local opt_force
+  local opt_haproxy
   docker_version="$(get_config_val '.octoswarm.dockerVersion')"
   service_name="$(get_service_val "$service_name" '.name')"
   beekeeper="$(get_service_val "$service_name" '.beekeeper.update')"
@@ -292,6 +293,7 @@ ensure_service() {
   role="$(get_service_val "$service_name" '.docker.role')"
   dockerSock="$(get_service_val "$service_name" '.docker.sock')"
   publish=( $(get_service_array_raw "$service_name" '.docker.publish[]') )
+  haproxyEnabled="$(get_service_val "$service_name" '.haproxy.enabled')"
   traefikHost="$(get_service_val "$service_name" '.traefik.host')"
   traefikNetwork="$(get_service_val "$service_name" '.traefik.network')"
   traefikPathPrefix="$(get_service_val "$service_name" '.traefik.pathPrefix')"
@@ -357,6 +359,9 @@ ensure_service() {
       opt_role="$constraintFlag node.role==$role"
     fi
   fi
+  if [ "$haproxyEnabled" != "" ]; then
+    opt_haproxy="$labelFlag octoswarm.haproxy.enabled=$haproxyEnabled"
+  fi
   if [ "$traefikHost" != "" ]; then
     local frontendRule="Host:$traefikHost"
     if [ "$traefikPathPrefix" != "" ]; then
@@ -400,6 +405,7 @@ ensure_service() {
       $opt_docker_sock \
       $opt_role \
       $opt_replicas \
+      $opt_haproxy \
       $opt_traefik \
       $opt_beekeeper \
       $opt_with_registry_auth \
@@ -434,6 +440,7 @@ ensure_service() {
       $opt_publish \
       $opt_docker_sock \
       $opt_role \
+      $opt_haproxy \
       $opt_traefik \
       $opt_beekeeper \
       $opt_with_registry_auth \
