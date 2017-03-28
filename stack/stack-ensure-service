@@ -294,6 +294,10 @@ ensure_service() {
   dockerSock="$(get_service_val "$service_name" '.docker.sock')"
   publish=( $(get_service_array_raw "$service_name" '.docker.publish[]') )
   haproxyEnabled="$(get_service_val "$service_name" '.haproxy.enabled')"
+  haproxyHost="$(get_service_val "$service_name" '.haproxy.host')"
+  haproxyPort="$(get_service_val "$service_name" '.haproxy.port')"
+  haproxyProtocol="$(get_service_val "$service_name" '.haproxy.protool')"
+  haproxyHealthcheckPath="$(get_service_val "$service_name" '.haproxy.healthcheck_path')"
   traefikHost="$(get_service_val "$service_name" '.traefik.host')"
   traefikNetwork="$(get_service_val "$service_name" '.traefik.network')"
   traefikPathPrefix="$(get_service_val "$service_name" '.traefik.pathPrefix')"
@@ -361,6 +365,18 @@ ensure_service() {
   fi
   if [ "$haproxyEnabled" != "" ]; then
     opt_haproxy="$labelFlag octoswarm.haproxy.enabled=$haproxyEnabled"
+  fi
+  if [ "$haproxyHost" != "" ]; then
+    opt_haproxy="$opt_haproxy $labelFlag octoswarm.haproxy.host=$haproxyHost"
+  fi
+  if [ "$haproxyPort" != "" ]; then
+    opt_haproxy="$opt_haproxy $labelFlag octoswarm.haproxy.port=$haproxyPort"
+  fi
+  if [ "$haproxyProtocol" != "" ]; then
+    opt_haproxy="$opt_haproxy $labelFlag octoswarm.haproxy.protocol=$haproxyProtocol"
+  fi
+  if [ "$haproxyHealthcheckPath" != "" ]; then
+    opt_haproxy="$opt_haproxy $labelFlag octoswarm.haproxy.healthcheck_path=$haproxyHealthcheckPath"
   fi
   if [ "$traefikHost" != "" ]; then
     local frontendRule="Host:$traefikHost"
