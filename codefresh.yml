@@ -25,6 +25,22 @@ steps:
     image_name: ${{CF_REPO_OWNER}}/${{CF_REPO_NAME}}
     tag: '17.03.0-ce-${{CF_BRANCH}}'
 
+  build_image_17_03_1_ce:
+    type: build
+    description: Building the image [17.03.1-ce]...
+    working_directory: ${{main_clone}}
+    dockerfile: 17.03.1-ce/Dockerfile
+    image_name: ${{CF_REPO_OWNER}}/${{CF_REPO_NAME}}
+    tag: '17.03.1-ce-${{CF_BRANCH}}'
+
+  build_image_17_04_0_ce_rc1:
+    type: build
+    description: Building the image [17.04.0-ce-rc1]...
+    working_directory: ${{main_clone}}
+    dockerfile: 17.04.0-ce-rc1/Dockerfile
+    image_name: ${{CF_REPO_OWNER}}/${{CF_REPO_NAME}}
+    tag: '17.04.0-ce-rc1-${{CF_BRANCH}}'
+
   push_to_registry_1_12_6:
     title: Pushing to Docker Registry [1.12.6]...
     type: push
@@ -42,3 +58,15 @@ steps:
     type: push
     candidate: '${{build_image_17_03_0_ce}}'
     tag: '17.03.0-ce-${{CF_BRANCH}}'
+
+  push_to_registry_17_03_1_ce:
+    title: Pushing to Docker Registry [17.03.1-ce]...
+    type: push
+    candidate: '${{build_image_17_03_1_ce}}'
+    tag: '17.03.1-ce-${{CF_BRANCH}}'
+
+  push_to_registry_17_04_0_ce_rc1:
+    title: Pushing to Docker Registry [17.04.0-ce-rc1]...
+    type: push
+    candidate: '${{build_image_17_04_0_ce_rc1}}'
+    tag: '17.04.0-ce-rc1-${{CF_BRANCH}}'
