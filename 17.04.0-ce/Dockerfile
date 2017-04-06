@@ -1,10 +1,10 @@
-FROM octoblu/octoalpine-docker:17.04.0-ce-rc1
+FROM octoblu/octoalpine-docker:17.04.0-ce
 MAINTAINER Octoblu <docker@octoblu.com>
 
 RUN mkdir -p /usr/src/app
 WORKDIR /workdir
 
-LABEL io.whalebrew.name octoswarm-17.04.0-ce-rc1
+LABEL io.whalebrew.name octoswarm-17.04.0-ce
 
 LABEL io.whalebrew.config.environment='[ \
   "AWS_ACCESS_KEY_ID", \
