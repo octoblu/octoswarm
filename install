@@ -60,17 +60,6 @@ version(){
   fi
 }
 
-install() {
-  local image="$1"
-  docker pull "octoblu/$image"
-  whalebrew install "octoblu/$image"
-}
-
-uninstall() {
-  local image="$1"
-  whalebrew uninstall "$image" 2> /dev/null
-}
-
 main() {
   # Define args up here
   while [ "$1" != "" ]; do
@@ -96,7 +85,7 @@ main() {
     shift
   done
 
-  local whalebrew_version="0.0.5"
+  local whalebrew_version="0.1.0"
   if [ "$(whalebrew version)" != "Whalebrew $whalebrew_version" ]; then
     curl -L \
       "https://github.com/bfirsh/whalebrew/releases/download/$whalebrew_version/whalebrew-$(uname -s)-$(uname -m)" \

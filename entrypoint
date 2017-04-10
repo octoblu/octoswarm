@@ -312,7 +312,7 @@ update_cert_permissions() {
 validate_machine_id() {
   local machine_id="$1"
   debug 'validating machine id' "$machine_id"
-  docker-machine config "$machine_id" 2>&1 | grep -i 'error' && return 1
+  # docker-machine config "$machine_id" 2>&1 | grep -i 'error' && return 1
   return 0
 }
 

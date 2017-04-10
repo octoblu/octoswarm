@@ -130,11 +130,7 @@ get_service_name() {
 
 ensure_services() {
   debug 'ensure services'
-  get_config_array '.services[]' | while read -r service; do
-    local name
-    name="$(get_service_name "$service")"
-    stack ensure-service "$name" || fatal "unable to ensure service $name"
-  done
+  stack ensure-services
 }
 
 main() {
@@ -169,7 +165,7 @@ main() {
 
   ensure_managers || fatal 'unable to ensure managers'
   ensure_workers || fatal 'unable to ensure workers'
-  ensure_machines || fatal 'unable to ensure machines'
+  # ensure_machines || fatal 'unable to ensure machines'
   ensure_services || fatal 'unable to ensure services'
   ensure_managers_elb || fatal 'unable to ensure managers elb'
 }

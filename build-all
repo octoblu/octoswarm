@@ -1,9 +1,9 @@
 #!/bin/bash
+set -e
 
 build_and_install() {
   local version="$1"
-   docker pull "octoblu/octoalpine:latest" \
-   && docker pull "octoblu/octoalpine-docker:$version" \
+   docker pull "octoblu/octoalpine-docker:$version" \
    && build "$version" \
    && install "$version"
 }
@@ -14,7 +14,7 @@ build() {
 }
 
 ensure_whalebrew() {
-  local whalebrew_version="0.0.5"
+  local whalebrew_version="0.1.0"
   if [ "$(whalebrew version)" != "Whalebrew $whalebrew_version" ]; then
     curl -L \
       "https://github.com/bfirsh/whalebrew/releases/download/$whalebrew_version/whalebrew-$(uname -s)-$(uname -m)" \
@@ -25,14 +25,19 @@ ensure_whalebrew() {
 
 install() {
   local version="$1"
-  whalebrew install "local/octoswarm-$version" --force
+  whalebrew install "local/octoswarm-$version" --assume-yes --force
 }
 
 main() {
-  ensure_whalebrew \
-  && build_and_install "1.12.6" \
-  && build_and_install "1.13.1" \
-  && build_and_install "17.03.0-ce"
+  ensure_whalebrew
+  docker pull "octoblu/octoalpine:latest"
+  build_and_install "1.12.6" &
+  build_and_install "1.13.1" &
+  build_and_install "17.03.1-ce" &
+  build_and_install "17.03.0-ce" &
+  build_and_install "17.04.0-ce" &
+  # shellcheck disable=SC2046
+  wait $(jobs -p)
 }
 
 main "$@"
