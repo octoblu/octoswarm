@@ -140,22 +140,15 @@ get_healthcheck_opt() {
   fi
 }
 
-get_service_spec_no_cache() {
-  local service_name="$1"
-  docker service inspect "$service_name" 2> /dev/null
-}
-
 get_service_spec() {
   local service_name="$1"
   local key="$2"
   local file_path="$SERVICE_SPEC_CACHE"
-  local service_json
-  service_json="$(cat "$file_path")"
-  if [ -z "$service_json" ]; then
+  if [ -z "$(cat "$file_path")" ]; then
     debug 'FETCHING THE SERVICE'
-    service_json="$(get_service_spec_no_cache "$service_name" | tee "$file_path")" || return 1
+    docker service inspect "$service_name" > "$file_path"
   fi
-  echo "$service_json" | jq --compact-output --raw-output ".[0].Spec${key}" 2> /dev/null
+  jq --compact-output --raw-output ".[0].Spec${key}" "$file_path" 2> /dev/null
 }
 
 has_docker_socket() {
@@ -223,7 +216,8 @@ has_same_replicas() {
   local expected_count="$2"
   local count
   count="$(get_service_spec "$service_name" '.Mode.Replicated.Replicas')"
-  if [ "$count" == "$expected_count" ]; then
+  if [ "$count" == "null" ] || [ "$count" == "$expected_count" ]; then
+    debug "replicas is the same: $count == $expected_count"
     echo 'true'
   else
     warn "Changing replica count to $expected_count from $count"
@@ -521,6 +515,7 @@ main() {
   if [ "$service_name" != "" ]; then
     ensure_service "$service_name"
     exit_code=$?
+    echo "" > "$SERVICE_SPEC_CACHE"
     SERVICE_SPEC_CACHE=""
     exit $exit_code
   fi
