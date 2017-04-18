@@ -273,6 +273,7 @@ ensure_service() {
   local dockerSock
   local publish
   local traefikHost
+  local traefikHostRegexp
   local traefikPathPrefix
   local runOptions
   local withRegistryAuth
@@ -298,6 +299,7 @@ ensure_service() {
   haproxyProtocol="$(get_service_val "$service_name" '.haproxy.protocol')"
   haproxyHealthcheckPath="$(get_service_val "$service_name" '.haproxy.healthcheck_path')"
   traefikHost="$(get_service_val "$service_name" '.traefik.host')"
+  traefikHostRegexp="$(get_service_val "$service_name" '.traefik.hostregexp')"
   traefikNetwork="$(get_service_val "$service_name" '.traefik.network')"
   traefikPathPrefix="$(get_service_val "$service_name" '.traefik.pathPrefix')"
   runOptions=( $(get_service_array_raw "$service_name" '.docker.runOptions[]') )
@@ -380,6 +382,13 @@ ensure_service() {
   fi
   if [ "$traefikHost" != "" ]; then
     local frontendRule="Host:$traefikHost"
+    if [ "$traefikPathPrefix" != "" ]; then
+      frontendRule="${frontendRule};PathPrefix:${traefikPathPrefix}"
+    fi
+    opt_traefik="$labelFlag traefik.frontend.rule=${frontendRule} $labelFlag traefik.port=80 $labelFlag traefik.docker.network=$traefikNetwork"
+  fi
+  if [ "$traefikHostRegexp" != "" ]; then
+    local frontendRule="HostRegexp:$traefikHostRegexp"
     if [ "$traefikPathPrefix" != "" ]; then
       frontendRule="${frontendRule};PathPrefix:${traefikPathPrefix}"
     fi
