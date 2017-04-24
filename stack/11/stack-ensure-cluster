@@ -1,0 +1,173 @@
+#!/bin/bash
+
+SCRIPT_NAME="stack-ensure-cluster"
+
+# shellcheck disable=SC1091
+source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
+
+usage(){
+  echo "USAGE: $SCRIPT_NAME"
+  echo 'Description: ensure a cluster is up-to-date'
+  echo ''
+  echo 'Arguments:'
+  echo '  -h, --help        print this help text'
+  echo '  -v, --version     print the version'
+  echo 'Environment:'
+  echo '  DEBUG             print debug output'
+}
+
+assert_required_config() {
+  require_config_value '.'
+  require_config_value '.managers.count'
+  require_config_value '.managers.instanceType'
+  require_config_value '.workers.count'
+  require_config_value '.workers.instanceType'
+  require_config_value '.services[]'
+}
+
+ensure_managers_elb() {
+  stack ensure-elb
+}
+
+ensure_machines() {
+  debug 'ensuring machines'
+  for machine_name in $(get_machine_names); do
+    debug "ensure machine $machine_name"
+    stack ensure-machine "$machine_name"
+  done
+  # shellcheck disable=SC2046
+  wait $(jobs -p)
+}
+
+ensure_managers() {
+  debug 'ensuring managers'
+  local count
+  local expected_count
+  local ec2_instance_type
+  local docker_version
+  local ec2_tags
+  count="$(get_managers_count)"
+  expected_count="$(get_config_val '.managers.count')"
+  ec2_instance_type="$(get_config_val '.managers.instanceType')"
+  docker_version="$(get_config_val '.octoswarm.dockerVersion')"
+  ec2_tags="$(get_ec2_tags_by_role 'manager')"
+
+  if [ "$count" -gt "$expected_count" ]; then
+    debug "The current count of managers is greater than expected count"
+    debug "SKIPPING..."
+    return 0
+  fi
+  if [ "$count" == "$expected_count" ]; then
+    debug "Managers count in sync with expected count"
+    debug "SKIPPING..."
+    return 0
+  fi
+  let "count_to_start = $expected_count - $count"
+  debug "creating $count_to_start more managers"
+
+  for i in $(seq 1 $count_to_start); do
+    debug 'creating a manager in the background'
+    let "real_count = $count + $i"
+    echo "Manager count insufficient, creating manager #$real_count..."
+    say_yes || continue
+    stack create-manager \
+      --ec2-tags "$ec2_tags" \
+      --docker-version "$docker_version" \
+      --ec2-instance-type "$ec2_instance_type" &
+  done
+  debug 'waiting for managers to boot'
+  # shellcheck disable=SC2046
+  wait $(jobs -p)
+}
+
+ensure_workers() {
+  local count
+  local expected_count
+  local ec2_instance_type
+  local docker_version
+  local ec2_tags
+
+  count="$(get_workers_count)"
+  expected_count="$(get_config_val '.workers.count')"
+  ec2_instance_type="$(get_config_val '.workers.instanceType')"
+  docker_version="$(get_config_val '.octoswarm.dockerVersion')"
+  ec2_tags="$(get_ec2_tags_by_role 'worker')"
+
+  if [ "$count" -gt "$expected_count" ]; then
+    debug "The current count of workers is greater than expected count"
+    debug "SKIPPING..."
+    return 0
+  fi
+
+  if [ "$count" == "$expected_count" ]; then
+    debug "Workers count in sync with expected count"
+    debug "SKIPPING..."
+    return 0
+  fi
+
+  let "count_to_start = $expected_count - $count"
+  debug "creating $count_to_start more workers"
+
+  for i in $(seq 1 $count_to_start); do
+    debug "creating a worker in the background"
+    let "real_count = $count + $i"
+    echo "Worker count insufficient, creating worker #$real_count..."
+    say_yes || continue
+    stack create-worker \
+      --ec2-tags "$ec2_tags" \
+      --docker-version "$docker_version" \
+      --ec2-instance-type "$ec2_instance_type" &
+  done
+  debug 'waiting for workers to boot'
+  # shellcheck disable=SC2046
+  wait $(jobs -p)
+}
+
+get_service_name() {
+  local service="$1"
+  echo "$service" | jq -r '.name'
+}
+
+ensure_services() {
+  debug 'ensure services'
+  stack ensure-services
+}
+
+main() {
+  while [ "$1" != "" ]; do
+    local param="$1"
+    # local value="$2"
+
+    case "$param" in
+      -h | --help)
+        usage
+        exit 0
+        ;;
+      -v | --version)
+        version
+        exit 0
+        ;;
+      *)
+        if [ "${param::1}" == '-' ]; then
+          echo "ERROR: unknown parameter \"$param\""
+          usage
+          exit 1
+        fi
+        ;;
+    esac
+    shift
+  done
+
+  assert_required_config
+
+  # shellcheck disable=SC2016
+  is_stack_empty || fatal 'Not initialized, run `create-cluster`'
+
+  ensure_managers || fatal 'unable to ensure managers'
+  ensure_workers || fatal 'unable to ensure workers'
+  # ensure_machines || fatal 'unable to ensure machines'
+  ensure_services || fatal 'unable to ensure services'
+  ensure_managers_elb || fatal 'unable to ensure managers elb'
+}
+
+main "$@"

@@ -1,7 +1,5 @@
 #!/bin/bash
 
-SUPPORTED_VERSION="10.0.0"
-
 # shellcheck disable=SC1091
 source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 
@@ -10,6 +8,7 @@ debug() {
 }
 
 usage(){
+  local stack_version="$1"
   echo 'USAGE: octoswarm <script-name> [options]'
   echo ''
   echo 'Arguments:'
@@ -40,7 +39,7 @@ usage(){
   echo ''
   echo 'Avialable Commands:'
   echo ''
-  get_commands
+  get_commands "$stack_version"
   echo ''
 }
 
@@ -151,8 +150,8 @@ assert_required_env() {
 assert_required_stack_version() {
   local stack_version="$1"
 
-  if [ "$stack_version" != "$SUPPORTED_VERSION" ]; then
-    fatal "$stack_version is not supported. $SUPPORTED_VERSION is required, exiting."
+  if [ ! -d "$STACK_BIN_DIR" ]; then
+    fatal "$stack_version is not supported."
   fi
 }
 
@@ -184,9 +183,11 @@ assert_stack() {
 
 assert_octoswarm_command() {
   local script_name="$1"
+  local stack_version="$2"
+
   case "$script_name" in
     ls | list)
-      get_commands
+      get_commands "$stack_version"
       exit 0
       ;;
   esac
@@ -195,7 +196,7 @@ assert_octoswarm_command() {
     echo ''
     echo 'It must be one of the following scripts:'
     echo ''
-    get_commands
+    get_commands "$stack_version"
     echo ''
     return 1
   fi
@@ -282,14 +283,15 @@ get_machine_id() {
 }
 
 get_commands() {
+  local stack_version="$1"
   echo "octoswarm ctop"
   echo "octoswarm docker"
   echo "octoswarm docker-machine"
   echo "octoswarm fish"
   echo "octoswarm bash"
   echo "octoswarm sen"
-  for file in `ls "$OCTOSWARM_BIN_DIR"`; do
-    echo "octoswarm ${file/${OCTOSWARM_BIN_DIR}/}"
+  for file in `ls "$OCTOSWARM_BIN_DIR/$stack_version"`; do
+    echo "octoswarm ${file/${OCTOSWARM_BIN_DIR\/$stack_version}/}"
   done
 }
 
@@ -317,13 +319,17 @@ validate_machine_id() {
 }
 
 main() {
+  local stack_version
+  stack_version="$(get_config_val '.octoswarm.version')"
+  export STACK_BIN_DIR="/usr/src/app/stack/$stack_version"
+
   local script_name="$1"
   local second_arg="$2"
   local third_arg="$3"
 
   case "$script_name" in
     -h | --help | help)
-      usage
+      usage "$stack_version"
       exit 0
       ;;
     -v | --version | version)
@@ -344,11 +350,9 @@ main() {
   become_a_real_boy
 
   assert_required_env
-  assert_octoswarm_command "$script_name"
-  assert_stack
-  local stack_version
-  stack_version="$(get_config_val '.octoswarm.version')"
   assert_required_stack_version "$stack_version"
+  assert_octoswarm_command "$script_name" "$stack_version"
+  assert_stack
   assert_latest_version
   copy_lecli_config
   export STACK_NAME="$(get_config_val '.stackName')"

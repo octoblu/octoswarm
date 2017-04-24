@@ -1,0 +1,81 @@
+#!/bin/bash
+
+SCRIPT_NAME="stack-ensure-machine"
+
+# shellcheck disable=SC1091
+source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
+
+usage(){
+  echo "USAGE: $SCRIPT_NAME <machine-name>"
+  echo 'Description: ensure a machine is up-to-date'
+  echo ''
+  echo 'Arguments:'
+  echo '  -h, --help        print this help text'
+  echo '  -v, --version     print the version'
+  echo 'Environment:'
+  echo '  DEBUG             print debug output'
+}
+
+assert_required_params() {
+  local machine_name="$1"
+  if [ -z "$machine_name" ]; then
+    fatal 'Missing machine-name as first arg'
+  fi
+}
+
+get_configure_logging_command() {
+  local tag
+  tag="$(get_tag_or_branch)"
+  local download_url="https://raw.githubusercontent.com/octoblu/octoswarm/$tag/configure-logging.sh"
+  echo "sudo curl -fsSL $download_url -o /run/configure-logging.sh && sudo bash /run/configure-logging.sh $OCTOSWARM_LOGENTRIES_SERVER_TOKEN"
+}
+
+configure_logging() {
+  local machine_name="$1"
+  run_cmd docker-machine ssh "$machine_name" "$(get_configure_logging_command)" || return 1
+}
+
+unconfigure_logging() {
+  local machine_name="$1"
+  local cmd="sudo systemctl stop log-to-logentires.service && sudo systemctl disable log-to-logentires.service"
+  run_cmd docker-machine ssh "$machine_name" "$cmd" &> /dev/null 
+}
+
+main() {
+  local machine_name
+  while [ "$1" != "" ]; do
+    local param="$1"
+
+    case "$param" in
+      -h | --help)
+        usage
+        exit 0
+        ;;
+      -v | --version)
+        version
+        exit 0
+        ;;
+      *)
+        if [ "${param::1}" == '-' ]; then
+          echo "ERROR: unknown parameter \"$param\""
+          usage
+          exit 1
+        fi
+        if [ -z "$machine_name" ]; then
+          machine_name="$param"
+        fi
+        ;;
+    esac
+    shift
+  done
+
+  assert_required_params "$machine_name"
+
+  # shellcheck disable=SC2016
+  is_stack_empty || fatal 'Not initialized, run `create-cluster`'
+
+ #warn "ensure-machine currently does nothing"
+ unconfigure_logging "$machine_name"
+}
+
+main "$@"
