@@ -114,8 +114,6 @@ ensure_dns() {
     warn "Could not find route53 hosted zone for: $domain"
     return 1
   fi
-  echo "$STACK_DIR/cluster.json"
-  cat "$STACK_DIR/cluster.json"
   change_batch="$(generate_change_batch "$host" "$load_balancer_dns" "$load_balancer_target_zone")"
   if [ "$DRY_RUN" == "true" ]; then
     echo "$change_batch"
