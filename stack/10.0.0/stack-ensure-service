@@ -216,7 +216,7 @@ has_same_replicas() {
   local expected_count="$2"
   local count
   count="$(get_service_spec "$service_name" '.Mode.Replicated.Replicas')"
-  if [ "$count" == "null" ] || [ "$count" == "$expected_count" ]; then
+  if [ "$count" == "$expected_count" ]; then
     debug "replicas is the same: $count == $expected_count"
     echo 'true'
   else
