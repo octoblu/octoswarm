@@ -7,8 +7,9 @@ source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
 
 assert_required_params() {
   local load_balancer_name="$1"
+  local load_balancer_cert="$2"
 
-  if [ -n "$load_balancer_name" ]; then
+  if [ -n "$load_balancer_name" ] && [ -n "$load_balancer_cert" ]; then
     return 0
   fi
 
@@ -20,11 +21,16 @@ assert_required_params() {
     exit 1
   fi
 
+  if [ -z "$load_balancer_cert" ]; then
+    echo "Missing load-balancer-cert as second argument"
+    exit 1
+  fi
+
   exit 1
 }
 
 usage(){
-  echo "USAGE: $SCRIPT_NAME <load-balancer-name>"
+  echo "USAGE: $SCRIPT_NAME <load-balancer-name> <load-balancer-cert>"
   echo ''
   echo 'Arguments:'
   echo '  -h, --help                       print this help text'
@@ -40,6 +46,7 @@ usage(){
 
 main() {
   local load_balancer_name
+  local load_balancer_cert
   local has_security_groups=0
   local security_groups
   local has_subnets=0
@@ -55,6 +62,10 @@ main() {
       -v | --version)
         version
         exit 0
+        ;;
+      --cert)
+        load_balancer_cert="$value"
+        shift
         ;;
       --security-groups)
         has_security_groups=1
@@ -74,6 +85,7 @@ main() {
         fi
         if [ -z "$load_balancer_name" ]; then
           load_balancer_name="$param"
+          shift
         fi
         ;;
     esac
@@ -90,7 +102,7 @@ main() {
   fi
 
 
-  assert_required_params "$load_balancer_name"
+  assert_required_params "$load_balancer_name" "$load_balancer_cert"
 
   local all_security_groups="${security_groups[@]}"
   local all_subnets="${subnets[@]}"
@@ -98,15 +110,13 @@ main() {
   debug "security_groups ${all_security_groups/\,/}"
   debug "subnets ${all_subnets/\,/}"
 
-  local cert_arn='arn:aws:iam::822069890720:server-certificate/star_octoblu_com_exp_102018'
-
   run_cmd aws elb create-load-balancer \
     --load-balancer-name "$load_balancer_name" \
     --listeners \
       "Protocol=HTTP,LoadBalancerPort=80,InstanceProtocol=HTTP,InstancePort=80" \
-      "Protocol=HTTPS,LoadBalancerPort=443,InstanceProtocol=HTTP,InstancePort=80,SSLCertificateId=$cert_arn" \
+      "Protocol=HTTPS,LoadBalancerPort=443,InstanceProtocol=HTTP,InstancePort=80,SSLCertificateId=$load_balancer_cert" \
       "Protocol=HTTP,LoadBalancerPort=8080,InstanceProtocol=HTTP,InstancePort=8080" \
-      "Protocol=HTTPS,LoadBalancerPort=8081,InstanceProtocol=HTTP,InstancePort=8080,SSLCertificateId=$cert_arn" \
+      "Protocol=HTTPS,LoadBalancerPort=8081,InstanceProtocol=HTTP,InstancePort=8080,SSLCertificateId=$load_balancer_cert" \
     --subnets "${subnets[@]/\,/}" \
     --security-groups "${security_groups[@]/\,/}" > /dev/null || fatal 'Unable to create a load balancer'
 

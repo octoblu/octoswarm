@@ -25,16 +25,18 @@ usage(){
 # Script Functions
 ensure_elb() {
   debug 'ensuring elbs'
-  get_elbs | while read elb; do
+  get_config_array '.elbs[]' | while read elb; do
     local elb_name
-    elb_name="$(echo "$elb" | jq --raw-output ".")"
+    local elb_cert
+    elb_name="$(echo "$elb" | jq --raw-output ".name")"
+    elb_cert="$(echo "$elb" | jq --raw-output ".cert")"
     elb_exists "$elb_name"
     local exists=$?
     if [ "$exists" == "1" ]; then
       debug "elb $elb_name does not exist"
       echo "ELB count insufficient, creating elb ($elb_name)..."
       say_yes || continue
-      stack create-elb "$elb_name"
+      stack create-elb --cert "$elb_cert" "$elb_name"
     else
       debug "elb $elb_name exists"
     fi
@@ -43,14 +45,6 @@ ensure_elb() {
       stack add-to-elb "$node_id" "$elb_name" || fatal 'unable to add to elb'
     done
   done
-}
-
-get_elbs() {
-  check_config_value ".elbs[]"
-  local has_elbs="$?"
-  if [ "$has_elbs" == "0" ]; then
-    get_config_array '.elbs[]'
-  fi
 }
 
 # Primary execution
