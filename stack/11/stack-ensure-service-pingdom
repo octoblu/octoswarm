@@ -226,6 +226,7 @@ find_pingdom_check() {
       echo "$check" | jq --raw-output '.id'
       return 0
     fi
+    return 1
   done
 }
 
