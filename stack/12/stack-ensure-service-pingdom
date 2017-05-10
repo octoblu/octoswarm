@@ -60,9 +60,9 @@ get_pingdom_contact_id() {
 }
 
 get_pingdom_additional_contacts() {
-  local service_name="$1"
+  local pingdom_check="$1"
   local additional_contact_ids
-  get_service_array "$service_name" '.pingdom.contacts[]' | while read contact; do
+  echo "$pingdom_check" | jq --compact-output '.contacts[]' | while read contact; do
     local contact_id="$(get_pingdom_contact_id "$contact")"
     if [ "$contact_id" != "" ]; then
       echo "$contact_id"
@@ -71,30 +71,30 @@ get_pingdom_additional_contacts() {
 }
 
 get_pingdom_contact_ids() {
-  local service_name="$1"
+  local pingdom_check="$1"
   local contact_ids
-  local pagerduty="$(get_service_val "$service_name" '.pingdom.pagerduty')"
+  local pagerduty="$(echo "$pingdom_check" | jq --raw-output '.pagerduty')"
   if [ "$pagerduty" != "false" ]; then
     contact_ids="11058966"
   fi
-  local additional_contact_ids=( $(get_pingdom_additional_contacts "$service_name") )
+  local additional_contact_ids=( $(get_pingdom_additional_contacts "$pingdom_check") )
   additional_contact_ids="$(join_by , "${additional_contact_ids[@]}")"
   join_by , $contact_ids $additional_contact_ids
 }
 
 get_pingdom_path() {
-  local service_name="$1"
-  local path="$(get_service_val "$service_name" '.pingdom.path')"
-  if [ "$path" == "" ]; then
+  local pingdom_check="$1"
+  local path="$(echo "$pingdom_check" | jq --raw-output '.path')"
+  if [ "$path" == "" ] || [ "$path" == "null" ]; then
     path="/healthcheck"
   fi
   echo "$path"
 }
 
 get_pingdom_should_contain() {
-  local service_name="$1"
-  local should_contain="$(get_service_val "$service_name" '.pingdom.shouldContain')"
-  if [ "$should_contain" == "" ]; then
+  local pingdom_check="$1"
+  local should_contain="$(echo "$pingdom_check" | jq --raw-output '.shouldContain')"
+  if [ "$should_contain" == "" ] || [ "$should_contain" == "null" ]; then
     should_contain='{"online":true}'
   fi
   if [ "$should_contain" == "false" ]; then
@@ -104,9 +104,11 @@ get_pingdom_should_contain() {
 }
 
 get_pingdom_tags() {
-  local service_name="$1"
+  local pingdom_check="$1"
+  local service_name="$2"
   local parent_tags="$(get_config_val '.pingdom.tags')"
-  local service_tags="$(get_service_val "$service_name" '.pingdom.tags')"
+  local id="$(echo "$pingdom_check" | jq --raw-output '.id')"
+  local service_tags="$(echo "$pingdom_check" | jq --raw-output '.tags')"
   local search_tags="$(get_service_full_name "$service_name")"
   local stack_env_name="$(get_config_val '.stackEnvName')"
   local stack_name="$(get_config_val '.stackName')"
@@ -114,38 +116,47 @@ get_pingdom_tags() {
   if [ "$parent_tags" == "null" ]; then
     parent_tags=""
   fi
+  if [ "$service_tags" == "null" ]; then
+    service_tags=""
+  fi
   if [ "$parent_tags" != "" ]; then
     parent_tags="$parent_tags,"
   fi
   if [ "$service_tags" != "" ]; then
     service_tags="$service_tags,"
   fi
-  echo "$stack_env_name,$stack_name,$stack_env_name-$stack_name,$parent_tags$service_tags$search_tags"
+  echo "$id,$stack_env_name,$stack_name,$stack_env_name-$stack_name,$parent_tags$service_tags$search_tags"
 }
 
 add_pingdom_checks() {
-  local service_name="$1"
+  local pingdom_check="$1"
+  local service_name="$2"
 
-  get_service_array_raw "$service_name" ".pingdom.hosts[]" | while read host; do
-    local check_id="$(find_pingdom_check "$service_name" "$host")"
+  echo "$pingdom_check" | jq --compact-output --raw-output ".hosts[]" | while read host; do
+    local check_id="$(find_pingdom_check "$pingdom_check" "$service_name" "$host")"
 
     if [ "$check_id" == "" ]; then
-      create_pingdom_check "$service_name" "$host"
+      create_pingdom_check "$pingdom_check" "$service_name" "$host"
     else
-      update_pingdom_check "$service_name" "$host" "$check_id"
+      update_pingdom_check "$pingdom_check" "$service_name" "$host" "$check_id"
     fi
   done
 }
 
 get_pingdom_check_options() {
-  local service_name="$1"
-  local host="$2"
+  local pingdom_check="$1"
+  local service_name="$2"
+  local host="$3"
   local name="$(get_service_full_name "$service_name")"
-  local path="$(get_pingdom_path "$service_name")"
-  local tags="$(get_pingdom_tags "$service_name")"
-  local auth="$(get_service_val "$service_name" '.pingdom.auth')"
-  local should_contain="$(get_pingdom_should_contain "$service_name")"
-  local contact_ids="$(get_pingdom_contact_ids "$service_name")"
+  local path="$(get_pingdom_path "$pingdom_check")"
+  local tags="$(get_pingdom_tags "$pingdom_check" "$service_name")"
+  local auth="$(echo "$pingdom_check" | jq --raw-output '.auth')"
+  local should_contain="$(get_pingdom_should_contain "$pingdom_check")"
+  local contact_ids="$(get_pingdom_contact_ids "$pingdom_check")"
+
+  if [ "$auth" == "null" ]; then
+    auth=""
+  fi
 
   local options
   options="$options --data host=$host"
@@ -167,7 +178,7 @@ get_pingdom_check_options() {
     options="$options --data auth=$auth"
   fi
   if [ "$name" != "" ]; then
-    options="$options --data name=$name"
+    options="$options --data name=$name-$host"
   fi
   if [ "$tags" != "" ]; then
     options="$options --data tags=$tags"
@@ -181,10 +192,11 @@ get_pingdom_check_options() {
 }
 
 create_pingdom_check() {
-  local service_name="$1"
-  local host="$2"
+  local pingdom_check="$1"
+  local service_name="$2"
+  local host="$3"
   debug "creating pingdom for $host"
-  local pingdom_check_options="$(get_pingdom_check_options "$service_name" "$host")"
+  local pingdom_check_options="$(get_pingdom_check_options "$pingdom_check" "$service_name" "$host")"
   curl \
     --silent \
     --request POST \
@@ -198,21 +210,57 @@ create_pingdom_check() {
 ensure_pingdom_checks() {
   local service_name="$1"
   debug "ensure pingdom check"
-  local check="$(get_service_val "$service_name" '.pingdom.check')"
-  if [ "$check" == "true" ]; then
-    add_pingdom_checks "$service_name"
-  fi
-  if [ "$check" == "false" ]; then
-    remove_pingdom_checks "$service_name"
-  fi
+  get_service_array "$service_name" '.pingdom[]' | while read pingdom_check; do
+    local id="$(echo "$pingdom_check" | jq --raw-output '.id')"
+
+    if [ "$id" == "null" ]; then
+      fatal ".id is required for $service_name"
+    fi
+
+    local check="$(echo "$pingdom_check" | jq --raw-output '.check')"
+
+    if [ "$check" == "true" ]; then
+      add_pingdom_checks "$pingdom_check" "$service_name"
+    fi
+    if [ "$check" == "false" ]; then
+      remove_pingdom_checks "$pingdom_check" "$service_name"
+    fi
+  done
 }
 
 find_pingdom_check() {
-  local service_name="$1"
-  local host="$2"
-  local search_tags="$(get_service_full_name "$service_name")"
+  local pingdom_check="$1"
+  local service_name="$2"
+  local host="$3"
 
-  debug "Finding for $service_name $host"
+  local pingdom_id="$(echo "$pingdom_check" | jq --raw-output ".id")"
+  if [ "$pingdom_id" == "null" ]; then
+    pingdom_id=""
+  fi
+
+  local path="$(echo "$pingdom_check" | jq --raw-output ".path")"
+  if [ "$path" == "null" ]; then
+    path=""
+  fi
+
+  local check_id
+
+  if [ "$pingdom_id" != "" ]; then
+    check_id="$(find_pingdom_check_by_id "$pingdom_id")"
+  fi
+
+  if [ "$check_id" == "" ]; then
+    check_id="$(find_pingdom_check_by_search_tags "$service_name" "$host" "$path")"
+  fi
+
+  echo "$check_id"
+}
+
+find_pingdom_check_by_id() {
+  local pingdom_id="$1"
+
+  search_tags="$pingdom_id"
+  debug "Finding for $service_name $host [$search_tags]"
 
   curl \
     --silent \
@@ -221,12 +269,45 @@ find_pingdom_check() {
     --user "$PINGDOM_USERNAME:$PINGDOM_PASSWORD" \
     "https://api.pingdom.com/api/2.0/checks?tags=$search_tags" | jq --compact-output '.checks[]' \
   | while read check; do
+    debug "found pingdom $check"
+    echo "$check" | jq --raw-output '.id'
+    return 0
+  done
+}
+
+find_pingdom_check_by_search_tags() {
+  local service_name="$1"
+  local host="$2"
+  local path="$3"
+  local search_tags="$(get_service_full_name "$service_name")"
+
+  debug "Finding for $service_name $host [$search_tags]"
+
+  curl \
+    --silent \
+    --request GET \
+    --header "App-Key: $PINGDOM_APP_KEY" \
+    --user "$PINGDOM_USERNAME:$PINGDOM_PASSWORD" \
+    "https://api.pingdom.com/api/2.0/checks?tags=$search_tags" | jq --compact-output '.checks[]' \
+  | while read check; do
+    debug "found pingdom $check"
     local hostname="$(echo "$check" | jq --raw-output '.hostname')"
     if [ "$hostname" == "$host" ]; then
-      echo "$check" | jq --raw-output '.id'
-      return 0
+      local check_id="$(echo "$check" | jq --raw-output '.id')"
+      local data="$(curl \
+        --silent \
+        --request GET \
+        --header "App-Key: $PINGDOM_APP_KEY" \
+        --user "$PINGDOM_USERNAME:$PINGDOM_PASSWORD" \
+        "https://api.pingdom.com/api/2.0/checks/$check_id")"
+
+      local url="$(echo "$chech" | jq --raw-output '.check.type.http.url')"
+
+      if [ "$path" == "$url" ]; then
+        echo "$check_id"
+        return 0
+      fi
     fi
-    return 1
   done
 }
 
@@ -244,10 +325,11 @@ pause_pingdom_check() {
 }
 
 remove_pingdom_checks() {
-  local service_name="$1"
+  local pingdom_check="$1"
+  local service_name="$2"
 
-  get_service_array_raw "$service_name" ".pingdom.hosts[]" | while read host; do
-    local check_id="$(find_pingdom_check "$service_name" "$host")"
+  echo "$pingdom_check" | jq --compact-output --raw-output '.hosts[]' | while read host; do
+    local check_id="$(find_pingdom_check "$pingdom_check" "$service_name" "$host")"
 
     if [ "$check_id" != "" ]; then
       pause_pingdom_check "$service_name" "$check_id"
@@ -256,11 +338,12 @@ remove_pingdom_checks() {
 }
 
 update_pingdom_check() {
-  local service_name="$1"
-  local host="$2"
-  local check_id="$3"
+  local pingdom_check="$1"
+  local service_name="$2"
+  local host="$3"
+  local check_id="$4"
 
-  local pingdom_check_options="$(get_pingdom_check_options "$service_name" "$host")"
+  local pingdom_check_options="$(get_pingdom_check_options "$pingdom_check" "$service_name" "$host")"
 
   curl \
     --silent \
