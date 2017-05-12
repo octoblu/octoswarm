@@ -39,7 +39,7 @@ usage(){
   echo ''
   echo 'Avialable Commands:'
   echo ''
-  get_commands "$stack_version"
+  get_commands_sorted "$stack_version"
   echo ''
 }
 
@@ -187,7 +187,7 @@ assert_octoswarm_command() {
 
   case "$script_name" in
     ls | list)
-      get_commands "$stack_version"
+      get_commands_sorted "$stack_version"
       exit 0
       ;;
   esac
@@ -196,7 +196,7 @@ assert_octoswarm_command() {
     echo ''
     echo 'It must be one of the following scripts:'
     echo ''
-    get_commands "$stack_version"
+    get_commands_sorted "$stack_version"
     echo ''
     return 1
   fi
@@ -284,15 +284,21 @@ get_machine_id() {
 
 get_commands() {
   local stack_version="$1"
-  echo "octoswarm ctop"
-  echo "octoswarm docker"
-  echo "octoswarm docker-machine"
-  echo "octoswarm fish"
-  echo "octoswarm bash"
-  echo "octoswarm sen"
-  for file in `ls "$OCTOSWARM_BIN_DIR/$stack_version"`; do
-    echo "octoswarm ${file/${OCTOSWARM_BIN_DIR\/$stack_version}/}"
+  echo "ctop"
+  echo "docker"
+  echo "docker-machine"
+  echo "fish"
+  echo "bash"
+  echo "sen"
+  echo "stack"
+  for file in `find "$STACK_BIN_DIR" -type f -maxdepth 1 -iname 'stack-*' | sort`; do
+    echo "stack ${file/${STACK_BIN_DIR}\/stack\-/}"
   done
+}
+
+get_commands_sorted() {
+  local stack_version="$1"
+  get_commands "$stack_version" | sort
 }
 
 run_script() {

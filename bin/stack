@@ -32,7 +32,7 @@ run_script() {
 }
 
 get_commands() {
-  for file in `find "$STACK_BIN_DIR" -type f -maxdepth 1 -iname 'stack-*'`; do
+  for file in `find "$STACK_BIN_DIR" -type f -maxdepth 1 -iname 'stack-*' | sort`; do
     echo "stack ${file/${STACK_BIN_DIR}\/stack\-/}"
   done
 }

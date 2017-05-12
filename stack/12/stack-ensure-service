@@ -36,12 +36,18 @@ get_env() {
 
 get_env_from_file() {
   local env_file="$1"
+  local warn="$2"
   if [ ! -f "$env_file" ]; then
     debug "no $env_file file"
     return 1
   fi
-  while IFS=$'\n' read -r env_line; do
-    if [ -n "$env_line" ]; then
+  local IFS=$'\n'
+  while read -r env_line; do
+    if [ -n "$env_line" ] && [[ "$env_line" != "${env_line%[[:space:]]*}"  ]]; then
+      if [ "$warn" == 'true' ]; then
+        warn "Skipping env \"$env_line\" because spaces will screw things up"
+      fi
+    elif [ -n "$env_line" ]; then
       echo "$env_line"
     fi
   done < "$env_file"
@@ -52,6 +58,7 @@ get_env_add_options() {
   local env_file="$2"
   local opt_env_add
   local exists
+  local IFS=$'\n'
   for env_line in $(get_env_from_file "$env_file"); do
     exists='false'
     for actual_env_line in $(get_env "$service_name"); do
@@ -76,6 +83,7 @@ get_env_rm_options() {
   local exists
   local actual_env_var=""
   local env_var
+  local IFS=$'\n'
   for actual_env_line in $(get_env "$service_name"); do
     exists='false'
     actual_env_var="$(get_env_var "$actual_env_line")"
@@ -219,6 +227,9 @@ has_same_replicas() {
   if [ "$count" == "$expected_count" ]; then
     debug "replicas is the same: $count == $expected_count"
     echo 'true'
+  elif [ "$count" == "null" ]; then
+    warn "Setting replica count to $expected_count"
+    echo 'false'
   else
     warn "Changing replica count to $expected_count from $count"
     echo 'false'
@@ -416,6 +427,9 @@ ensure_service() {
   for network in "${networkOptions[@]}"; do
     opt_network="$opt_network $networkFlag $network"
   done
+
+  # print warnings in env_file so it doesn't print a bunch later
+  get_env_from_file "$envFile" 'true' > /dev/null
 
   run_cmd docker login --username "$DOCKER_HUB_USERNAME" --password "$DOCKER_HUB_PASSWORD" > /dev/null
   if [ "$isUpdate" == "true" ]; then
