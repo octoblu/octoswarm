@@ -16,6 +16,8 @@ get_domain_from_host () {
   local host="$1"
   if [[ "$host" == *space ]]; then
     echo "octo.space"
+  elif [[ "$host" == *staging* ]]; then
+    echo "octoblu-staging.com"
   else
     echo "octoblu.com"
   fi
