@@ -1,0 +1,43 @@
+#!/usr/bin/env node
+
+var fs = require("fs")
+
+class StackRoute53 {
+  constructor(argv) {
+    this.options = {
+      host: this._getRequiredEnv("HOST"),
+      loadBalancerDns: this._getRequiredEnv("LOAD_BALANCER_DNS"),
+      zoneId: this._getRequiredEnv("ZONE_ID"),
+    }
+  }
+
+  run() {
+    const routes = {
+      Comment: "Stack Update DNS",
+      Changes: [
+        {
+          Action: "UPSERT",
+          ResourceRecordSet: {
+            Name: this.options.host,
+            Type: "A",
+            AliasTarget: {
+              HostedZoneId: this.options.zoneId,
+              DNSName: this.options.loadBalancerDns,
+              EvaluateTargetHealth: false,
+            },
+          },
+        },
+      ],
+    }
+    console.log(JSON.stringify(routes, null, 2))
+    process.exit(0)
+  }
+
+  _getRequiredEnv(envName) {
+    if (process.env[envName]) return process.env[envName]
+    throw new Error(`Missing env: ${envName}`)
+  }
+}
+
+const stackRoute53 = new StackRoute53()
+stackRoute53.run()

@@ -71,6 +71,13 @@ errecho() {
   (>&2 echo -e "$message")
 }
 
+compose_yaml_as_json() {
+  remarshall \
+    --input-file="$DOCKER_COMPOSE_YAML_PATH" \
+    --input-format="yaml" \
+    --output-format="json"
+}
+
 get_machines() {
   docker-machine ls | grep -v ACTIVE
 }
@@ -170,27 +177,37 @@ elb_exists() {
   return 0
 }
 
+require_compose_value() {
+  local key="$1"
+
+  check_compose_value "$key" \
+  && return 0
+
+  errecho "* Cannot get $key from config."
+  fatal "$STACK_CONFIG_PATH is invalid json."
+}
+
 require_config_value() {
   local key="$1"
   local exit_code
   check_config_value "$key"
   exit_code=$?
   if [ "$exit_code" != "0" ]; then
-    echo "* Cannot get $key from config."
+    errecho "* Cannot get $key from config."
     fatal "$STACK_CONFIG_PATH is invalid json."
   fi
 }
 
+check_compose_value() {
+  local key="$1"
+
+  compose_yaml_as_json | jq "$key" "$STACK_CONFIG_PATH" &> /dev/null
+}
+
 check_config_value() {
   local key="$1"
-  local exit_code
 
   jq "$key" "$STACK_CONFIG_PATH" &> /dev/null
-  exit_code=$?
-  if [ "$exit_code" != "0" ]; then
-    return 1
-  fi
-  return 0
 }
 
 get_config_val() {
@@ -206,16 +223,24 @@ get_config_val() {
   echo "$value"
 }
 
+get_compose_array() {
+  local key="$1"
+
+  compose_yaml_as_json \
+  | jq --compact-output "$key" 2> /dev/null
+}
+
 get_config_array() {
   local key="$1"
   jq --compact-output "$key" "$STACK_CONFIG_PATH" 2> /dev/null
 }
 
 get_service_full_name() {
-  local service_name="$1"
-  local name="$(get_service_val "$service_name" '.name')"
-  local stack_env_name="$(get_config_val '.stackEnvName')"
-  local stack_name="$(get_config_val '.stackName')"
+  local name service_name stack_env_name stack_name
+  service_name="$1"
+  name="$(get_service_val "$service_name" '.name')"
+  stack_env_name="$(get_config_val '.stackEnvName')"
+  stack_name="$(get_config_val '.stackName')"
 
   echo "$stack_env_name-$stack_name-$name"
 }
@@ -258,10 +283,7 @@ get_service_by_name() {
 }
 
 is_stack_empty() {
-  if [ -d "$MACHINE_STORAGE_PATH/machines" ]; then
-    return 0
-  fi
-  return 1
+  test -d "$MACHINE_STORAGE_PATH/machines"
 }
 
 version(){
@@ -309,11 +331,11 @@ function join_by {
 }
 
 function get_ec2_tags_by_role {
-  local role="$1"
+  local ec2_tags envName role stackName
+  role="$1"
 
-  local ec2_tags
-  local envName="$(get_config_val '.stackEnvName')"
-  local stackName="$(get_config_val '.stackName')"
+  envName="$(get_config_val '.stackEnvName')"
+  stackName="$(get_config_val '.stackName')"
 
   local rebootable="false"
   if [ "$role" == "worker" ]; then

@@ -32,6 +32,7 @@ LABEL io.whalebrew.config.environment='[ \
 
 ENV DOCKER_MACHINE_NAME=default
 ENV DOCKER_MACHINE_PORT=2376
+ENV DOCKER_COMPOSE_YAML_PATH /workdir/docker-compose.yml
 ENV DOCKER_CONFIG=/usr/local/etc/docker
 ENV OCTOSWARM_BIN_DIR /usr/src/app/bin
 ENV STACK_CONFIG_PATH /workdir/cluster.json
