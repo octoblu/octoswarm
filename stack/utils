@@ -72,8 +72,8 @@ errecho() {
 }
 
 compose_yaml_as_json() {
-  remarshall \
-    --input-file="$DOCKER_COMPOSE_YAML_PATH" \
+  remarshal \
+    --input="$DOCKER_COMPOSE_YAML_PATH" \
     --input-format="yaml" \
     --output-format="json"
 }
@@ -161,6 +161,10 @@ get_workers_count() {
   get_workers | wc -l | xargs
 }
 
+get_worker_ids() {
+  get_workers
+}
+
 service_exists() {
   local name="$1"
   for service_name in $(docker service ls | grep -v NAME | awk '{print $2}'); do
@@ -183,8 +187,8 @@ require_compose_value() {
   check_compose_value "$key" \
   && return 0
 
-  errecho "* Cannot get $key from config."
-  fatal "$STACK_CONFIG_PATH is invalid json."
+  errecho "* Cannot get $key from docker-compose.yml."
+  fatal "$DOCKER_COMPOSE_YAML_PATH is invalid yaml."
 }
 
 require_config_value() {
@@ -201,7 +205,7 @@ require_config_value() {
 check_compose_value() {
   local key="$1"
 
-  compose_yaml_as_json | jq "$key" "$STACK_CONFIG_PATH" &> /dev/null
+  compose_yaml_as_json | jq "$key" &> /dev/null
 }
 
 check_config_value() {

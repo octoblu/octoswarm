@@ -40,6 +40,11 @@ ensure_machines() {
 }
 
 ensure_managers() {
+  ensure_managers_exist \
+  && update_managers
+}
+
+ensure_managers_exist() {
   debug 'ensuring managers'
   local count
   local expected_count
@@ -81,6 +86,11 @@ ensure_managers() {
 }
 
 ensure_workers() {
+  ensure_workers_exist \
+  && update_workers
+}
+
+ensure_workers_exist() {
   local count
   local expected_count
   local ec2_instance_type
@@ -131,6 +141,26 @@ get_service_name() {
 ensure_services() {
   debug 'ensure services'
   stack ensure-services
+}
+
+update_managers() {
+  local manager_ids
+
+  manager_ids=( $(get_manager_ids) )
+
+  for manager_id in "${manager_ids[@]}"; do
+    docker node update --label-add manager=true "$manager_id" || return $?
+  done
+}
+
+update_workers() {
+  local worker_ids
+
+  worker_ids=( $(get_worker_ids) )
+
+  for worker_id in "${worker_ids[@]}"; do
+    docker node update --label-add worker=true "$worker_id" || return $?
+  done
 }
 
 main() {

@@ -1,0 +1,19 @@
+#!/bin/bash
+
+usage(){
+  echo "USAGE: don't"
+  echo 'DEPRECATED: use ensure-services instead'
+  echo '            (services cannot no longer be updated individually)'
+  echo ''
+  echo 'Arguments:'
+  echo '  -h, --help        print this help text'
+  echo '  -v, --version     print the version'
+  echo 'Environment:'
+  echo '  DEBUG             print debug output'
+}
+
+main() {
+  usage 1>&2 \
+  && exit 1
+}
+main "$@"
