@@ -59,7 +59,7 @@ main() {
   is_stack_empty || fatal 'Not initialized, run `create-cluster`'
 
   stack_name="$(get_config_val '.stackName')"
-  docker stack deploy --compose-file "$DOCKER_COMPOSE_YAML_PATH" "$stack_name"
+  docker stack deploy --with-registry-auth --compose-file "$DOCKER_COMPOSE_YAML_PATH" "$stack_name"
 }
 
 main "$@"
