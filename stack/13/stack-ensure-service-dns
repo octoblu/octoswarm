@@ -1,185 +1,24 @@
 #!/bin/bash
 
-SCRIPT_NAME='stack-ensure-service-dns'
-
-# shellcheck disable=SC1091
-source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
-
-assert_required_params() {
-  local service_name="$1"
-  if [ -z "$service_name" ]; then
-    fatal 'Missing service-name as first arg'
-  fi
-}
-
-get_domain_from_host () {
-  local host="$1"
-  if [[ "$host" == *space ]]; then
-    echo "octo.space"
-  elif [[ "$host" == *staging* ]]; then
-    echo "octoblu-staging.com"
-  else
-    echo "octoblu.com"
-  fi
-}
-
 usage(){
-  echo "USAGE: $SCRIPT_NAME <service_name>"
+  echo 'USAGE:'
+  echo "  Don't"
   echo ''
-  echo 'Description: will setup DNS for service'
-  echo ''
-  echo "Example: ${SCRIPT_NAME}"
+  echo 'DEPRECATED:'
+  echo '  Use the tool octodns on the project'
+  echo '  https://github.com/octoblu/octoswarm-dns'
+  echo '  instead. octodns is available in homebrew'
+  echo '  from the octoblu/tools tap.'
   echo ''
   echo 'Arguments:'
-  echo '  -h, --help       print this help text'
-  echo "  -n, --dry-run    show what records will be created/updated"
-  echo "                   but don't actually do anything"
-  echo '  -v, --version    print the version'
-  echo ''
+  echo '  -h, --help        print this help text'
+  echo '  -v, --version     print the version'
   echo 'Environment:'
-  echo '  DEBUG            print debug output'
-  echo ''
+  echo '  DEBUG             print debug output'
 }
-# Script Functions
-
-generate_change_batch(){
-  local host="$1"
-  local load_balancer_dns="$2"
-  local load_balancer_target_zone="$3"
-
-  env \
-    CONFIG_PATH="$STACK_DIR/cluster.json" \
-    HOST="$host" \
-    LOAD_BALANCER_DNS="$load_balancer_dns" \
-    ZONE_ID="$load_balancer_target_zone" \
-    stack write-route-53-service-alias
-}
-
-get_load_balancer_dns() {
-  local load_balancer_name="$1"
-  get_load_balancers "$load_balancer_name" | while read load_balancer; do
-    local load_balancer_dns
-    load_balancer_dns="$(echo "$load_balancer" | jq -r '.CanonicalHostedZoneName')"
-    if [ -n "$load_balancer_dns" ]; then
-      echo "$load_balancer_dns"
-      return 0
-    fi
-  done
-  return 1
-}
-
-get_load_balancer_target_zone() {
-  local load_balancer_name="$1"
-  get_load_balancers "$load_balancer_name" | while read load_balancer; do
-    local load_balancer_target_zone
-    load_balancer_target_zone="$(echo "$load_balancer" | jq -r '.CanonicalHostedZoneNameID')"
-    if [ -n "$load_balancer_target_zone" ]; then
-      echo "$load_balancer_target_zone"
-      return 0
-    fi
-  done
-  return 1
-}
-
-get_load_balancers() {
-  local filter="$1"
-  aws elb describe-load-balancers --load-balancer-names "$filter" | jq --compact-output  '.LoadBalancerDescriptions[]'
-}
-
-get_route53_hosted_zone(){
-  local domain="$1"
-
-  aws route53 list-hosted-zones \
-  | jq --raw-output ".HostedZones | map(select(.Name == \"$domain\"))[0].Id"
-}
-
-get_service_dns_entries() {
-  local service_name="$1"
-  get_service_array_raw "$service_name" ".dns"
-}
-
-ensure_dns() {
-  local service_name="$1"
-  local dns="$2"
-
-  local host="$(echo "$dns" | jq --raw-output '.host')"
-  local load_balancer_name="$(echo "$dns" | jq --raw-output '.elb')"
-  local domain="$(get_domain_from_host "$host")"
-
-  if [ "$load_balancer_name" == "" ]; then
-    return 1
-  fi
-  load_balancer_dns="$(get_load_balancer_dns "$load_balancer_name")"
-  load_balancer_target_zone="$(get_load_balancer_target_zone "$load_balancer_name")"
-  route53_hosted_zone=$(get_route53_hosted_zone "${domain}.")
-  if [ -z "$route53_hosted_zone" ] || [ "$route53_hosted_zone" == "null" ]; then
-    warn "Could not find route53 hosted zone for: $domain"
-    return 1
-  fi
-  change_batch="$(generate_change_batch "$host" "$load_balancer_dns" "$load_balancer_target_zone")"
-  if [ "$DRY_RUN" == "true" ]; then
-    echo "$change_batch"
-    return 0
-  fi
-
-  tmpfile="$(mktemp)"
-  echo "$change_batch" > "$tmpfile"
-
-  run_cmd aws route53 \
-    change-resource-record-sets \
-    --hosted-zone-id "$route53_hosted_zone" \
-    --change-batch "file://$tmpfile" || fatal 'Unable to create route'
-}
-
-# Primary execution
 
 main() {
-  local change_batch
-  local config_path
-  local domain
-  local load_balancer_dns
-  local load_balancer_name
-  local load_balancer_target_zone
-  local route53_hosted_zone
-  local tmpfile
-  local zone_name
-  local service_name
-
-  while [ "$1" != "" ]; do
-    local param="$1"
-    case "$param" in
-      -h | --help)
-        usage
-        exit 0
-        ;;
-      -v | --version)
-        version
-        exit 0
-        ;;
-      -n | --dry-run)
-        warn "Using '--dry-run'"
-        export DRY_RUN='true'
-        ;;
-      *)
-        if [ "${param::1}" == '-' ]; then
-          echo "ERROR: unknown parameter \"$param\""
-          usage
-          exit 1
-        fi
-        # Set main arguments
-        if [ -z "$service_name" ]; then
-          service_name="$param"
-        fi
-        ;;
-    esac
-    shift
-  done
-
-  assert_required_params "$service_name"
-
-  get_service_array "$service_name" '.dns[]' | while read dns; do
-    ensure_dns "$service_name" "$dns"
-  done
+  usage 1>&2 \
+  && exit 1
 }
-
 main "$@"

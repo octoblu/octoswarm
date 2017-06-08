@@ -1,13 +1,14 @@
 #!/bin/bash
 
-SCRIPT_NAME='stack-ensure-pingdom'
-
-# shellcheck disable=SC1091
-source "/usr/src/app/stack/utils" || fatal 'unable to load utils'
-
 usage(){
-  echo "USAGE: $SCRIPT_NAME"
-  echo 'Description: ensure pingdom alerts for cluster'
+  echo 'USAGE:'
+  echo "  Don't"
+  echo ''
+  echo 'DEPRECATED:'
+  echo '  Use the tool octopingdom on the project'
+  echo '  https://github.com/octoblu/octoswarm-pingdom'
+  echo '  instead. octopingdom is available in homebrew'
+  echo '  from the octoblu/tools tap.'
   echo ''
   echo 'Arguments:'
   echo '  -h, --help        print this help text'
@@ -16,52 +17,8 @@ usage(){
   echo '  DEBUG             print debug output'
 }
 
-assert_required_config() {
-  require_config_value '.'
-  require_config_value '.services[]'
-}
-
-ensure_pingdoms() {
-  debug 'ensure pingdoms'
-  get_config_array '.services[]' | while read service; do
-    local name="$(echo "$service" | jq --raw-output '.name')"
-    if [ "$name" == "" ]; then
-      fatal "Could not parse service name"
-    fi
-    stack ensure-service-pingdom "$name" || fatal "unable to ensure pingdom $name"
-  done
-}
-
 main() {
-  while [ "$1" != "" ]; do
-    local param="$1"
-    local value="$2"
-
-    case "$param" in
-      -h | --help)
-        usage
-        exit 0
-        ;;
-      -v | --version)
-        version
-        exit 0
-        ;;
-      *)
-        if [ "${param::1}" == '-' ]; then
-          echo "ERROR: unknown parameter \"$param\""
-          usage
-          exit 1
-        fi
-        ;;
-    esac
-    shift
-  done
-
-  assert_required_config
-
-  is_stack_empty || fatal 'Not initialized, run `create-cluster`'
-
-  ensure_pingdoms || fatal 'unable to ensure pingdom'
+  usage 1>&2 \
+  && exit 1
 }
-
 main "$@"
