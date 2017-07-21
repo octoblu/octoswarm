@@ -29,16 +29,6 @@ ensure_managers_elb() {
   stack ensure-elb
 }
 
-ensure_machines() {
-  debug 'ensuring machines'
-  for machine_name in $(get_machine_names); do
-    debug "ensure machine $machine_name"
-    stack ensure-machine "$machine_name"
-  done
-  # shellcheck disable=SC2046
-  wait $(jobs -p)
-}
-
 ensure_managers() {
   debug 'ensuring managers'
   local count
@@ -165,7 +155,6 @@ main() {
 
   ensure_managers || fatal 'unable to ensure managers'
   ensure_workers || fatal 'unable to ensure workers'
-  # ensure_machines || fatal 'unable to ensure machines'
   ensure_services || fatal 'unable to ensure services'
   ensure_managers_elb || fatal 'unable to ensure managers elb'
 }

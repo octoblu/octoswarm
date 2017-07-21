@@ -18,24 +18,18 @@ usage(){
   echo 'Environment:'
   echo '  DEBUG              print debug output'
   echo '  SAY_YES            prompt for dangerous actions'
-  echo '  AWS_ACCESS_KEY_ID     (required)'
-  echo '  AWS_SECRET_ACCESS_KEY (required)'
-  echo '  AWS_DEFAULT_REGION    (required)'
-  echo '  DOCKER_HUB_USERNAME   (required)'
-  echo '  DOCKER_HUB_PASSWORD   (required)'
-  echo '  BEEKEEPER_URI         (required)'
-  echo '  PINGDOM_APP_KEY       (required)'
-  echo '  PINGDOM_USERNAME      (required)'
-  echo '  PINGDOM_PASSWORD      (required)'
-  echo '  OCTOSWARM_LOGENTRIES_ACCOUNT_RESOURCE_ID (required)'
-  echo '  OCTOSWARM_LOGENTRIES_OWNER_API_KEY_ID    (required)'
-  echo '  OCTOSWARM_LOGENTRIES_OWNER_API_KEY       (required)'
-  echo '  OCTOSWARM_LOGENTRIES_RW_API_KEY          (required)'
-  echo '  OCTOSWARM_LOGENTRIES_LOG_ID              (required)'
-  echo '  OCTOSWARM_LOGENTRIES_TOKEN               (required)'
-  echo '  OCTOSWARM_LOGENTRIES_SERVER_TOKEN        (required)'
-  echo '  OCTOSWARM_GITHUB_API_TOKEN               (required)'
-  echo '  OCTOSWARM_MACHINE                        (optional)'
+  echo '  AWS_ACCESS_KEY_ID          (required)'
+  echo '  AWS_SECRET_ACCESS_KEY      (required)'
+  echo '  AWS_DEFAULT_REGION         (required)'
+  echo '  DOCKER_HUB_USERNAME        (required)'
+  echo '  DOCKER_HUB_PASSWORD        (required)'
+  echo '  BEEKEEPER_URI              (required)'
+  echo '  PINGDOM_APP_KEY            (required)'
+  echo '  PINGDOM_USERNAME           (required)'
+  echo '  PINGDOM_PASSWORD           (required)'
+  echo '  OCTOSWARM_GITHUB_API_TOKEN (required)'
+  echo '  OCTOSWARM_LOGENTRIES_TOKEN (optional)'
+  echo '  OCTOSWARM_MACHINE          (optional)'
   echo ''
   echo 'Avialable Commands:'
   echo ''
@@ -80,44 +74,8 @@ assert_required_env() {
     exit 1
   fi
 
-  if [ -z "$OCTOSWARM_LOGENTRIES_ACCOUNT_RESOURCE_ID" ]; then
-    errecho 'Missing required env OCTOSWARM_LOGENTRIES_ACCOUNT_RESOURCE_ID'
-    errecho '-- make sure dotfiles is up to date'
-    exit 1
-  fi
-
-  if [ -z "$OCTOSWARM_LOGENTRIES_OWNER_API_KEY_ID" ]; then
-    errecho 'Missing required env OCTOSWARM_LOGENTRIES_OWNER_API_KEY_ID'
-    errecho '-- make sure dotfiles is up to date'
-    exit 1
-  fi
-
-  if [ -z "$OCTOSWARM_LOGENTRIES_OWNER_API_KEY" ]; then
-    errecho 'Missing required env OCTOSWARM_LOGENTRIES_OWNER_API_KEY'
-    errecho '-- make sure dotfiles is up to date'
-    exit 1
-  fi
-
-  if [ -z "$OCTOSWARM_LOGENTRIES_RW_API_KEY" ]; then
-    errecho 'Missing required env OCTOSWARM_LOGENTRIES_RW_API_KEY'
-    errecho '-- make sure dotfiles is up to date'
-    exit 1
-  fi
-
-  if [ -z "$OCTOSWARM_LOGENTRIES_LOG_ID" ]; then
-    errecho 'Missing required env OCTOSWARM_LOGENTRIES_LOG_ID'
-    errecho '-- make sure dotfiles is up to date'
-    exit 1
-  fi
-
   if [ -z "$OCTOSWARM_LOGENTRIES_TOKEN" ]; then
     errecho 'Missing required env OCTOSWARM_LOGENTRIES_TOKEN'
-    errecho '-- make sure dotfiles is up to date'
-    exit 1
-  fi
-
-  if [ -z "$OCTOSWARM_LOGENTRIES_SERVER_TOKEN" ]; then
-    errecho 'Missing required env OCTOSWARM_LOGENTRIES_SERVER_TOKEN'
     errecho '-- make sure dotfiles is up to date'
     exit 1
   fi

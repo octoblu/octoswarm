@@ -407,7 +407,7 @@ ensure_service() {
   fi
   if [ "$docker_version" != "1.12.6" ]; then
     opt_force="--force"
-    if [ "$logentries" == "true" ]; then
+    if [ "$logentries" == "true" ] && [ -n "$OCTOSWARM_LOGENTRIES_TOKEN" ]; then
       opt_logentries="--log-driver logentries --log-opt logentries-token=$OCTOSWARM_LOGENTRIES_TOKEN"
     else
       opt_logentries="--log-driver json-file"
