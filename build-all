@@ -37,6 +37,7 @@ main() {
   build_and_install "17.03.1-ce" &
   build_and_install "17.04.0-ce" &
   build_and_install "17.05.0-ce" &
+  build_and_install "17.06.0-ce" &
   # shellcheck disable=SC2046
   wait $(jobs -p)
 }
